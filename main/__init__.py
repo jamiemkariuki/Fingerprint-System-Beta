@@ -12,7 +12,14 @@ from main.blueprints.teacher import teacher_bp
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    # Get the absolute path to the project root
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(project_root, 'templates'),
+        static_folder=os.path.join(project_root, 'static')
+    )
     app.config.from_object(config_class)
 
     # Initialize extensions

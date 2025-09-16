@@ -9,6 +9,10 @@ from main.hardware.fingerprint import finger
 
 load_dotenv()
 
+# --- Constants ---
+PERSON_TYPE_STUDENT = 'student'
+PERSON_TYPE_TEACHER = 'teacher'
+
 # --- Logging ---
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO),
@@ -83,7 +87,7 @@ def match_fingerprint():
             logger.info("Student: %s (Class %s)", user['name'], user['class'])
             if lcd:
                 lcd.text(f"Student: {user['name']}", 1)
-            log_fingerprint("student", user["id"])
+            log_fingerprint(PERSON_TYPE_STUDENT, user["id"])
             return
 
         # Then check if ID belongs to teacher
@@ -93,7 +97,7 @@ def match_fingerprint():
             logger.info("Teacher: %s", teacher['name'])
             if lcd:
                 lcd.text(f"Teacher: {teacher['name']}", 1)
-            log_fingerprint("teacher", teacher["id"])
+            log_fingerprint(PERSON_TYPE_TEACHER, teacher["id"])
             return
 
         logger.warning("Match not found in DB (orphan ID)")
