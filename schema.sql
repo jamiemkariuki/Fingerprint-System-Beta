@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS `FingerprintLogs` (
   `person_id` INT UNSIGNED NOT NULL,
   `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_logs_person_day` (`person_type', `person_id`, `timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
+  KEY `idx_logs_person_day` (`person_type`, `person_id`, `timestamp` )
+ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  )
 
 -- Optional: seed initial admin (change password after hashing externally if desired)
 -- INSERT INTO `Admins` (`username`, `password_hash`) VALUES ('admin', '<bcrypt-hash-here>');
