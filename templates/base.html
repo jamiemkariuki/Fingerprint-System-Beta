@@ -4,39 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Fingerprint System</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
   <body>
     <header>
-      <nav>
-        <ul>
-          <li><strong>Fingerprint System</strong></li>
-        </ul>
+      <nav class="container">
+        <a href="{{ url_for('home') }}" class="brand">Fingerprint System</a>
         <ul>
           <li><a href="{{ url_for('teacher_dashboard') }}">Teacher</a></li>
           <li><a href="{{ url_for('admin_dashboard') }}">Admin</a></li>
-          {% if session.get('teacher_id') %}
-            <li><a href="{{ url_for('teacher_logout') }}">Logout (Teacher)</a></li>
-          {% endif %}
-          {% if session.get('admin_id') %}
-            <li><a href="{{ url_for('admin_logout') }}">Logout (Admin)</a></li>
+          {% if session.get('teacher_id') or session.get('admin_id') %}
+            <li><a href="{{ url_for('teacher_logout') if session.get('teacher_id') else url_for('admin_logout') }}" class="btn btn-secondary">Logout</a></li>
           {% endif %}
         </ul>
       </nav>
     </header>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="flash {{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
 
-    <main>
       {% block content %}{% endblock %}
     </main>
-  </body>
-  </html>
 
+    <footer class="container text-center mt-20">
+      <small>&copy; 2025 Fingerprint System</small>
+    </footer>
+  </body>
+</html>

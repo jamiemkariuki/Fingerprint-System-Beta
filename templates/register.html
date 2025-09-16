@@ -1,18 +1,17 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container">
-<div class="card" style="max-width:640px;margin:auto;">
-<h2>Register Student</h2>
-<form method="post" action="{{ url_for('register_student') }}">
-  <label>Full Name
-    <input name="name" required />
-  </label>
-  <label>Class
-    <input name="class" required />
-  </label>
-  <button type="submit">Register & Enroll Fingerprint</button>
-</form>
-</div>
+<div class="card" style="max-width: 480px; margin: auto;">
+    <h2>Register Student</h2>
+    <form method="post" action="{{ url_for('register_student') }}">
+        <label>
+            Full Name
+            <input name="name" required>
+        </label>
+        <label>
+            Class
+            <input name="class" required>
+        </label>
+        <button type="submit">Register & Enroll Fingerprint</button>
+    </form>
 </div>
 {% endblock %}
-

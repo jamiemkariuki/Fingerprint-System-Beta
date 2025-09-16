@@ -1,58 +1,53 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container">
-<div class="heading">
-  <h2>Teacher Dashboard</h2>
-  <div>
-    <a role="button" class="secondary" href="{{ url_for('teacher_logout') }}">Logout</a>
-  </div>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Teacher Dashboard</h2>
+    <a href="{{ url_for('register_user') }}" class="btn">Register Student</a>
 </div>
 
 <div class="card">
-<form class="toolbar" method="get" action="{{ url_for('teacher_dashboard') }}">
-  <label>Filter by class
-    <select name="class">
-      <option value="">All</option>
-      {% for c in classes %}
-        <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>{{ c }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <button type="submit">Filter</button>
-  <a role="button" class="btn" href="{{ url_for('register_user') }}">Register Student</a>
-</form>
+    <form method="get" action="{{ url_for('teacher_dashboard') }}" style="display: flex; gap: 10px; align-items: center;">
+        <label style="margin-bottom: 0;">
+            Filter by class
+            <select name="class">
+                <option value="">All</option>
+                {% for c in classes %}
+                    <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">Filter</button>
+    </form>
 </div>
 
 <div class="card">
-<table role="grid">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Class</th>
-      <th>Status (Today)</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for user in users %}
-      <tr>
-        <td>{{ user.name }}</td>
-        <td>{{ user.class }}</td>
-        <td>
-          {% if user.status == 'Present' %}
-            <span class="status-present">Present</span>
-          {% else %}
-            <span class="status-absent">Absent</span>
-          {% endif %}
-        </td>
-        <td>
-          <a role="button" class="btn" href="{{ url_for('student_attendance_pdf', student_id=user.id) }}" target="_blank">PDF Report</a>
-        </td>
-      </tr>
-    {% endfor %}
-  </tbody>
- </table>
-</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Class</th>
+                <th>Status (Today)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.class }}</td>
+                    <td>
+                        {% if user.status == 'Present' %}
+                            <span class="status-present">Present</span>
+                        {% else %}
+                            <span class="status-absent">Absent</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('student_attendance_pdf', student_id=user.id) }}" class="btn btn-secondary" target="_blank">PDF Report</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}
-
