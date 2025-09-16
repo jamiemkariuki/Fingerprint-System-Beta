@@ -2,7 +2,7 @@
 {% block content %}
 <div class="card" style="max-width: 480px; margin: auto;">
     <h2>Register Student</h2>
-    <form method="post" action="{{ url_for('register_student') }}">
+    <form method="post" action="{{ url_for('teacher.register_student') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <label for="name">Full Name</label>
         <input id="name" name="name" required>

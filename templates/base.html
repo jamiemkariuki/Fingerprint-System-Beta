@@ -9,12 +9,12 @@
   <body>
     <header>
       <nav class="container">
-        <a href="{{ url_for('home') }}" class="brand">Fingerprint System</a>
+        <a href="{{ url_for('main.home') }}" class="brand">Fingerprint System</a>
         <ul>
-          <li><a href="{{ url_for('teacher_dashboard') }}">Teacher</a></li>
-          <li><a href="{{ url_for('admin_dashboard') }}">Admin</a></li>
+          <li><a href="{{ url_for('teacher.teacher_dashboard') }}">Teacher</a></li>
+          <li><a href="{{ url_for('admin.admin_dashboard') }}">Admin</a></li>
           {% if session.get('teacher_id') or session.get('admin_id') %}
-            <li><a href="{{ url_for('teacher_logout') if session.get('teacher_id') else url_for('admin_logout') }}" class="btn btn-secondary">Logout</a></li>
+            <li><a href="{{ url_for('teacher.teacher_logout') if session.get('teacher_id') else url_for('admin.admin_logout') }}" class="btn btn-secondary">Logout</a></li>
           {% endif %}
         </ul>
       </nav>
