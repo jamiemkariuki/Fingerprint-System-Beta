@@ -110,7 +110,7 @@ def generate_class_attendance_pdf(class_name, students, date):
         
         story = []
         
-        story.append(Paragraph(f"Class Attendance Report - {class_name} ({date.strftime("%Y-%m-%d")})", title_style))
+        story.append(Paragraph(f"Class Attendance Report - {class_name} ({date.strftime('%Y-%m-%d')})", title_style))
         story.append(Spacer(1, 20))
         
         if students:
