@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+<div class="heading">
+  <h2>Admin Dashboard</h2>
+  <div>
+    <a role="button" class="secondary" href="{{ url_for('admin_logout') }}">Logout</a>
+  </div>
+</div>
+
+<section class="card">
+  <h3>Create Teacher</h3>
+  <form method="post" action="{{ url_for('create_teacher') }}">
+    <label>Name
+      <input name="name" required />
+    </label>
+    <label>Username
+      <input name="username" required />
+    </label>
+    <label>Password
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Teachers</h3>
+  <table role="grid">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Username</th>
+        <th>Fingerprint ID</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in teachers %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td>{{ t.name }}</td>
+          <td>{{ t.username }}</td>
+          <td>{{ t.fingerprint_id or '-' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('delete_teacher', teacher_id=t.id) }}" style="display:inline" onsubmit="return confirm('Delete teacher?');">
+              <button class="secondary" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h3>Students</h3>
+  <table role="grid">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Class</th>
+        <th>Fingerprint ID</th>
+        <th>Status (Today)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td>
+          <td>{{ u.name }}</td>
+          <td>{{ u.class }}</td>
+          <td>{{ u.fingerprint_id or '-' }}</td>
+          <td>
+            {% if u.status == 'Present' %}
+              <span class="status-present">Present</span>
+            {% else %}
+              <span class="status-absent">Absent</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="{{ url_for('delete_student', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('Delete student?');">
+              <button class="secondary" type="submit">Delete</button>
+            </form>
+            <a role="button" class="btn" href="{{ url_for('student_attendance_pdf', student_id=u.id) }}" target="_blank" style="margin-left: 0.5rem;">PDF Report</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<p>
+  <a role="button" class="secondary" href="{{ url_for('admin_logout') }}">Logout</a>
+</p>
+</div>
+{% endblock %}
+

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <div class="card" style="max-width:840px;margin:auto;">
+    <hgroup>
+      <h1>School Fingerprint Attendance</h1>
+      <p>A simple system to register students and record attendance using a fingerprint sensor. Teachers can review daily presence by class, while admins manage teachers and students.</p>
+    </hgroup>
+    <ul>
+      <li>Enroll student fingerprints from the web app</li>
+      <li>Background listener matches scans to users</li>
+      <li>Daily presence view with class filtering</li>
+      <li>Secure logins for teachers and admins</li>
+    </ul>
+    <p>
+      <a role="button" class="btn" href="{{ url_for('teacher_login') }}">Teacher Login</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,87 @@
+/* Custom refinements on top of Pico.css */
+
+:root {
+  --brand: #6b4f3b;
+  --brand-600: #5a3f2e;
+  --ok: #1b8f3a;
+  --warn: #c72c41;
+}
+
+body {
+  background: #ffffff;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  border: 1px solid #eef0f5;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+nav ul li a[role="button"],
+button, .btn {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+nav ul li a[role="button"]:hover,
+button:hover, .btn:hover {
+  background: var(--brand-600);
+  border-color: var(--brand-600);
+}
+
+table[role="grid"] {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #eef0f5;
+}
+table[role="grid"] thead th {
+  background: #f8f3ef;
+}
+
+a { color: var(--brand-600); }
+a:hover { color: var(--brand); }
+
+.status-present { color: var(--ok); font-weight: 600; }
+.status-absent { color: var(--warn); font-weight: 600; }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: end;
+}
+
+.flash { margin: .5rem 0; }
+.flash.error { background:#ffe5e5; color:#a40000; }
+.flash.success { background:#e5ffef; color:#006d3a; }
+
+form label { width: 100%; }
+
+/* Pagination */
+nav ul {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  list-style: none;
+  padding: 1rem 0;
+}
+
+nav ul li {
+  margin: 0;
+}
+
+
