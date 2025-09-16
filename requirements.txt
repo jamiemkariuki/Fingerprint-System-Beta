@@ -2,7 +2,7 @@ Flask==3.1.2
 mysql-connector-python==9.4.0
 bcrypt==4.3.0
 adafruit-circuitpython-fingerprint==2.2.22
-rpi-lgpio==0.12.1
+rpi-lgpio==0.6
 rpi-lcd==0.0.3
 pyserial==3.5
 python-dotenv==1.0.1
