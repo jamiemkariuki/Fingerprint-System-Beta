@@ -3,7 +3,7 @@ import logging
 from dotenv import load_dotenv
 import time
 import mysql.connector
-from database import get_db as connect_db
+from main.database import get_db as connect_db
 from main.hardware.lcd import lcd
 from main.hardware.fingerprint import finger
 
