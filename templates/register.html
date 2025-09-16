@@ -3,14 +3,11 @@
 <div class="card" style="max-width: 480px; margin: auto;">
     <h2>Register Student</h2>
     <form method="post" action="{{ url_for('register_student') }}">
-        <label>
-            Full Name
-            <input name="name" required>
-        </label>
-        <label>
-            Class
-            <input name="class" required>
-        </label>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <label for="name">Full Name</label>
+        <input id="name" name="name" required>
+        <label for="class">Class</label>
+        <input id="class" name="class" required>
         <button type="submit">Register & Enroll Fingerprint</button>
     </form>
 </div>

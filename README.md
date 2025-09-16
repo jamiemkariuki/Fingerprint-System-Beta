@@ -4,13 +4,13 @@ A Flask web app and background listener for student attendance using a fingerpri
 
 ## Features
 - Student registration with fingerprint enrollment
-- Daily presence view (by class) for teachers
+- Daily presence view (by class) for teachers, with attendance logged between 5 AM and 10 PM
 - Admin management for teachers and students
 - Background listener to match scans and log presence
 - Configurable via environment variables
 
 ## Tech Stack
-- Python (Flask)
+- Python (Flask, Flask-WTF)
 - MySQL (mysql-connector)
 - Adafruit fingerprint sensor (UART)
 - Raspberry Pi LCD support (optional)
@@ -18,15 +18,27 @@ A Flask web app and background listener for student attendance using a fingerpri
 ## Project Structure
 ```
 Fingerprint_System/
-  app.py                 # Flask app
+  config.py            # Application configuration
+  database.py          # Database connection and pooling
   fingerprint_listener.py# Background scanner
-  wsgi.py                # WSGI entrypoint
-  schema.sql             # MySQL schema
-  requirements.txt       # Dependencies
+  wsgi.py              # WSGI entrypoint
+  schema.sql           # MySQL schema
+  requirements.txt     # Dependencies
   static/
-    style.css            # Custom styles
+    style.css          # Custom styles
   templates/
-    *.html               # Jinja templates
+    *.html             # Jinja templates
+  main/
+    __init__.py        # Flask app creation and blueprint registration
+    blueprints/
+      admin.py         # Admin related routes
+      main.py          # Main routes (e.g., home)
+      teacher.py       # Teacher related routes
+    hardware/
+      fingerprint.py   # Fingerprint sensor handling
+      lcd.py           # LCD display handling
+    utils/
+      pdf.py           # PDF generation utility
 ```
 
 ## Setup
@@ -82,7 +94,7 @@ Example `.env` file is supported; environment variables override `.env` if both 
 ### Development (built-in server)
 ```bash
 # Ensure env vars are set
-python app.py
+python wsgi.py
 ```
 Visit http://localhost:5000
 
@@ -120,6 +132,7 @@ Create an admin via the Admin Signup page (`/admin_signup`). Passwords are store
 ## Security
 - Secrets and DB credentials are read from environment variables
 - Session cookies are `HttpOnly` and support `Secure`/`SameSite` configuration
+- CSRF protection is enabled for all forms.
 - Disable debug in production (`FLASK_DEBUG=false`)
 
 ## Troubleshooting
@@ -129,4 +142,3 @@ Create an admin via the Admin Signup page (`/admin_signup`). Passwords are store
 
 ## License
 This project is provided as-is under your chosen license (add one if needed).
-

@@ -2,14 +2,23 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center;">
     <h2>Teacher Dashboard</h2>
-    <a href="{{ url_for('register_user') }}" class="btn">Register Student</a>
+    <a href="{{ url_for('teacher.register_user') }}" class="btn">Register Student</a>
 </div>
 
 <div class="card">
-    <form method="get" action="{{ url_for('teacher_dashboard') }}" style="display: flex; gap: 10px; align-items: center;">
+    <h3>Teacher Information</h3>
+    <p><strong>Name:</strong> {{ teacher_info.name }}</p>
+    <p><strong>Username:</strong> {{ teacher_info.username }}</p>
+    <p><strong>Email:</strong> {{ teacher_info.email }}</p>
+    <p><strong>Class:</strong> {{ teacher_info.class }}</p>
+</div>
+
+<div class="card">
+    <form method="get" action="{{ url_for('teacher.teacher_dashboard') }}" style="display: flex; gap: 10px; align-items: center;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <label style="margin-bottom: 0;">
             Filter by class
-            <select name="class">
+            <select name="class" id="class-select">
                 <option value="">All</option>
                 {% for c in classes %}
                     <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>{{ c }}</option>
@@ -17,6 +26,9 @@
             </select>
         </label>
         <button type="submit">Filter</button>
+        {% if selected_class %}
+        <a href="{{ url_for('teacher.class_attendance_pdf', class_name=selected_class) }}" class="btn btn-secondary" target="_blank">Generate Class PDF</a>
+        {% endif %}
     </form>
 </div>
 
@@ -27,7 +39,6 @@
                 <th>Name</th>
                 <th>Class</th>
                 <th>Status (Today)</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -41,9 +52,6 @@
                         {% else %}
                             <span class="status-absent">Absent</span>
                         {% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ url_for('student_attendance_pdf', student_id=user.id) }}" class="btn btn-secondary" target="_blank">PDF Report</a>
                     </td>
                 </tr>
             {% endfor %}

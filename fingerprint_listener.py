@@ -1,18 +1,11 @@
 import os
 import logging
 from dotenv import load_dotenv
-import serial
 import time
 import mysql.connector
-from mysql.connector import pooling
-try:
-    from adafruit_fingerprint import Adafruit_Fingerprint
-except Exception:
-    Adafruit_Fingerprint = None  # type: ignore
-try:
-    from rpi_lcd import LCD
-except Exception:
-    LCD = None  # type: ignore
+from database import get_db as connect_db
+from main.hardware.lcd import lcd
+from main.hardware.fingerprint import finger
 
 load_dotenv()
 
@@ -21,44 +14,6 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO),
                     format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("fingerprint_listener")
-
-# --- LCD Setup ---
-class _NoopLCD:
-    def text(self, msg, *_args):
-        logger.info("LCD: %s", msg)
-
-lcd = _NoopLCD() if LCD is None else LCD()
-
-# --- Fingerprint Sensor Setup ---
-finger = None
-try:
-    uart = serial.Serial("/dev/serial0", baudrate=57600, timeout=1)
-    if Adafruit_Fingerprint:
-        finger = Adafruit_Fingerprint(uart)
-    else:
-        logger.warning("Adafruit_Fingerprint not available; sensor disabled")
-except Exception as e:
-    logger.warning("Fingerprint sensor init failed: %s", e)
-
-# --- MySQL Config ---
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'fingerprint_user'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'FingerprintDB'),
-    'port': int(os.getenv('DB_PORT', '3306')),
-}
-
-try:
-    db_pool = pooling.MySQLConnectionPool(pool_name="fp_pool_listener", pool_size=int(os.getenv("DB_POOL_SIZE", "5")), **DB_CONFIG)
-except Exception as e:
-    logger.warning("DB pool init failed, falling back to direct connections: %s", e)
-    db_pool = None
-
-def connect_db():
-    if db_pool:
-        return db_pool.get_connection()
-    return mysql.connector.connect(**DB_CONFIG)
 
 def log_fingerprint(person_type, person_id):
     """Insert a scan log into FingerprintLogs table."""
@@ -71,14 +26,24 @@ def log_fingerprint(person_type, person_id):
         )
         conn.commit()
         conn.close()
-        print(f"[LOG] {person_type} ID {person_id} logged successfully")
+        logger.info(f"[LOG] {person_type} ID {person_id} logged successfully")
     except mysql.connector.Error as e:
-        print("[DB ERROR]", e)
+        logger.exception("DB error during logging: %s", e)
+    except Exception as e:
+        logger.exception("Unexpected error during logging: %s", e)
 
 def match_fingerprint():
     """Wait for a finger, search for a match, and log it."""
     logger.info("Waiting for finger...")
-    lcd.text("Waiting for scan", 1)
+    if lcd:
+        lcd.text("Waiting for scan", 1)
+
+    if not finger:
+        logger.error("Fingerprint sensor unavailable.")
+        if lcd:
+            lcd.text("Sensor Error", 1)
+        time.sleep(2)
+        return
 
     # Wait until finger is detected
     while finger.get_image() != 0:
@@ -86,18 +51,22 @@ def match_fingerprint():
 
     if finger.image_2_tz(1) != 0:
         logger.warning("Failed to convert image")
+        if lcd:
+            lcd.text("Scan Failed", 1)
         return
 
     if finger.finger_search() != 0:
         logger.info("No match found")
-        lcd.text("No match!", 1)
+        if lcd:
+            lcd.text("No match!", 1)
         return
 
     # Match found
     matched_id = finger.finger_id
     confidence = finger.confidence
     logger.info("Match found! ID=%s, Confidence=%s", matched_id, confidence)
-    lcd.text(f"Matched ID:{matched_id}", 1)
+    if lcd:
+        lcd.text(f"Matched ID:{matched_id}", 1)
 
     # Look up in database
     try:
@@ -109,7 +78,8 @@ def match_fingerprint():
         user = cursor.fetchone()
         if user:
             logger.info("Student: %s (Class %s)", user['name'], user['class'])
-            lcd.text(f"Student: {user['name']}", 1)
+            if lcd:
+                lcd.text(f"Student: {user['name']}", 1)
             log_fingerprint("student", user["id"])
             conn.close()
             return
@@ -119,30 +89,42 @@ def match_fingerprint():
         teacher = cursor.fetchone()
         if teacher:
             logger.info("Teacher: %s", teacher['name'])
-            lcd.text(f"Teacher: {teacher['name']}", 1)
+            if lcd:
+                lcd.text(f"Teacher: {teacher['name']}", 1)
             log_fingerprint("teacher", teacher["id"])
             conn.close()
             return
 
         conn.close()
         logger.warning("Match not found in DB (orphan ID)")
-        lcd.text("Unknown ID", 1)
+        if lcd:
+            lcd.text("Unknown ID", 1)
 
     except mysql.connector.Error as e:
         logger.exception("DB error during match lookup: %s", e)
+        if lcd:
+            lcd.text("DB Error", 1)
+    except Exception as e:
+        logger.exception("Unexpected error during match lookup: %s", e)
+        if lcd:
+            lcd.text("Error", 1)
 
 # --- Main Loop ---
 if __name__ == "__main__":
     logger.info("Fingerprint listener started. Waiting for scans...")
-    lcd.text("Listener Ready", 1)
+    if lcd:
+        lcd.text("Listener Ready", 1)
     while True:
         try:
             match_fingerprint()
             time.sleep(1)
         except KeyboardInterrupt:
             logger.info("Exiting listener...")
-            lcd.text("Listener Stopped", 1)
+            if lcd:
+                lcd.text("Listener Stopped", 1)
             break
         except Exception as e:
             logger.exception("Unhandled error in listener loop: %s", e)
+            if lcd:
+                lcd.text("Error in Loop", 1)
             time.sleep(2)

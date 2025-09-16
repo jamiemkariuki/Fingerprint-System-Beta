@@ -19,11 +19,14 @@ CREATE TABLE IF NOT EXISTS `Teachers` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(128) NOT NULL,
   `username` VARCHAR(64) NOT NULL,
+  `email` VARCHAR(128) NOT NULL,
+  `class` VARCHAR(64) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `fingerprint_id` INT UNSIGNED NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_teacher_username` (`username`),
+  UNIQUE KEY `uniq_teacher_email` (`email`),
   UNIQUE KEY `uniq_teacher_fingerprint_id` (`fingerprint_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -46,10 +49,9 @@ CREATE TABLE IF NOT EXISTS `FingerprintLogs` (
   `person_id` INT UNSIGNED NOT NULL,
   `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_logs_person_day` (`person_type`, `person_id`, `timestamp`)
+  KEY `idx_logs_person_day` (`person_type', `person_id`, `timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 -- Optional: seed initial admin (change password after hashing externally if desired)
 -- INSERT INTO `Admins` (`username`, `password_hash`) VALUES ('admin', '<bcrypt-hash-here>');
-

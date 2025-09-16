@@ -1,4 +1,3 @@
-from app import app as application
+from main import create_app
 
-# This file exposes `application` for WSGI servers like gunicorn/uwsgi
-
+application = create_app()
