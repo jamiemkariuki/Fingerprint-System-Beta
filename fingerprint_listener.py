@@ -6,6 +6,7 @@ import mysql.connector
 from main.database import get_db as connect_db
 from main.hardware.lcd import lcd
 from main.hardware.fingerprint import finger
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -18,6 +19,22 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO),
                     format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("fingerprint_listener")
+
+# --- In-memory cache for first scans ---
+_first_scan_cache = {}
+
+def _clear_old_scans():
+    """Clears scans older than 24 hours or from a previous day's 10 PM cutoff."""
+    now = datetime.now()
+    keys_to_remove = []
+    for key, scan_time in _first_scan_cache.items():
+        # Clear if older than 24 hours or if it's past 10 PM today and scan was from yesterday
+        if (now - scan_time) > timedelta(hours=24) or \
+           (now.hour >= 22 and scan_time.date() < now.date()):
+            keys_to_remove.append(key)
+    for key in keys_to_remove:
+        _first_scan_cache.pop(key)
+        logger.info(f"Cleared old first scan for {key}")
 
 def log_fingerprint(person_type, person_id):
     """Insert a scan log into FingerprintLogs table."""
@@ -80,29 +97,57 @@ def match_fingerprint():
         conn = connect_db()
         cursor = conn.cursor(dictionary=True)
 
+        person_type = None
+        person_id = None
+
         # First check if ID belongs to student
         cursor.execute("SELECT * FROM Users WHERE fingerprint_id = %s", (matched_id,))
         user = cursor.fetchone()
         if user:
+            person_type = PERSON_TYPE_STUDENT
+            person_id = user["id"]
             logger.info("Student: %s (Class %s)", user['name'], user['class'])
             if lcd:
                 lcd.text(f"Student: {user['name']}", 1)
-            log_fingerprint(PERSON_TYPE_STUDENT, user["id"])
-            return
 
         # Then check if ID belongs to teacher
-        cursor.execute("SELECT * FROM Teachers WHERE fingerprint_id = %s", (matched_id,))
-        teacher = cursor.fetchone()
-        if teacher:
-            logger.info("Teacher: %s", teacher['name'])
-            if lcd:
-                lcd.text(f"Teacher: {teacher['name']}", 1)
-            log_fingerprint(PERSON_TYPE_TEACHER, teacher["id"])
-            return
+        if not person_type:
+            cursor.execute("SELECT * FROM Teachers WHERE fingerprint_id = %s", (matched_id,))
+            teacher = cursor.fetchone()
+            if teacher:
+                person_type = PERSON_TYPE_TEACHER
+                person_id = teacher["id"]
+                logger.info("Teacher: %s", teacher['name'])
+                if lcd:
+                    lcd.text(f"Teacher: {teacher['name']}", 1)
 
-        logger.warning("Match not found in DB (orphan ID)")
-        if lcd:
-            lcd.text("Unknown ID", 1)
+        if person_type and person_id:
+            cache_key = (person_type, person_id)
+            now = datetime.now()
+
+            # Check if within 5 AM to 10 PM window
+            if not (5 <= now.hour < 22):
+                logger.info(f"Scan for {cache_key} outside 5 AM - 10 PM window. Not logging.")
+                if lcd:
+                    lcd.text("Out of hours", 1)
+                return
+
+            if cache_key in _first_scan_cache:
+                # Second scan detected
+                _first_scan_cache.pop(cache_key) # Remove from cache
+                log_fingerprint(person_type, person_id)
+                if lcd:
+                    lcd.text("Logged!", 1)
+            else:
+                # First scan detected
+                _first_scan_cache[cache_key] = now
+                logger.info(f"First scan for {cache_key} recorded. Waiting for second scan.")
+                if lcd:
+                    lcd.text("Scan again!", 1)
+        else:
+            logger.warning("Match not found in DB (orphan ID)")
+            if lcd:
+                lcd.text("Unknown ID", 1)
 
     except mysql.connector.Error as e:
         logger.exception("DB error during match lookup: %s", e)
@@ -122,6 +167,7 @@ if __name__ == "__main__":
     if lcd:
         lcd.text("Listener Ready", 1)
     while True:
+        _clear_old_scans() # Clear old scans periodically
         try:
             match_fingerprint()
             time.sleep(1)
