@@ -17,6 +17,7 @@ logger = logging.getLogger("fingerprint_listener")
 
 def log_fingerprint(person_type, person_id):
     """Insert a scan log into FingerprintLogs table."""
+    conn = None
     try:
         conn = connect_db()
         cursor = conn.cursor()
@@ -25,12 +26,14 @@ def log_fingerprint(person_type, person_id):
             (person_type, person_id)
         )
         conn.commit()
-        conn.close()
         logger.info(f"[LOG] {person_type} ID {person_id} logged successfully")
     except mysql.connector.Error as e:
         logger.exception("DB error during logging: %s", e)
     except Exception as e:
         logger.exception("Unexpected error during logging: %s", e)
+    finally:
+        if conn:
+            conn.close()
 
 def match_fingerprint():
     """Wait for a finger, search for a match, and log it."""
@@ -68,7 +71,7 @@ def match_fingerprint():
     if lcd:
         lcd.text(f"Matched ID:{matched_id}", 1)
 
-    # Look up in database
+    conn = None
     try:
         conn = connect_db()
         cursor = conn.cursor(dictionary=True)
@@ -81,7 +84,6 @@ def match_fingerprint():
             if lcd:
                 lcd.text(f"Student: {user['name']}", 1)
             log_fingerprint("student", user["id"])
-            conn.close()
             return
 
         # Then check if ID belongs to teacher
@@ -92,10 +94,8 @@ def match_fingerprint():
             if lcd:
                 lcd.text(f"Teacher: {teacher['name']}", 1)
             log_fingerprint("teacher", teacher["id"])
-            conn.close()
             return
 
-        conn.close()
         logger.warning("Match not found in DB (orphan ID)")
         if lcd:
             lcd.text("Unknown ID", 1)
@@ -108,6 +108,9 @@ def match_fingerprint():
         logger.exception("Unexpected error during match lookup: %s", e)
         if lcd:
             lcd.text("Error", 1)
+    finally:
+        if conn:
+            conn.close()
 
 # --- Main Loop ---
 if __name__ == "__main__":
