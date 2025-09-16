@@ -13,6 +13,7 @@ load_dotenv()
 # --- Constants ---
 PERSON_TYPE_STUDENT = 'student'
 PERSON_TYPE_TEACHER = 'teacher'
+LCD_LINE_LENGTH = 16
 
 # --- Logging ---
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -82,7 +83,8 @@ def match_fingerprint():
     if finger.finger_search() != 0:
         logger.info("No match found")
         if lcd:
-            lcd.text("No match!", 1)
+            lcd.text("Clean finger", 1)
+            lcd.text("& sensor", 2)
         return
 
     # Match found
@@ -106,9 +108,12 @@ def match_fingerprint():
         if user:
             person_type = PERSON_TYPE_STUDENT
             person_id = user["id"]
+            display_name = user['name']
+            if len(display_name) > LCD_LINE_LENGTH - len("Student: "):
+                display_name = display_name[:LCD_LINE_LENGTH - len("Student: ") - 3] + "..."
             logger.info("Student: %s (Class %s)", user['name'], user['class'])
             if lcd:
-                lcd.text(f"Student: {user['name']}", 1)
+                lcd.text(f"Student: {display_name}", 1)
 
         # Then check if ID belongs to teacher
         if not person_type:
@@ -117,9 +122,12 @@ def match_fingerprint():
             if teacher:
                 person_type = PERSON_TYPE_TEACHER
                 person_id = teacher["id"]
+                display_name = teacher['name']
+                if len(display_name) > LCD_LINE_LENGTH - len("Teacher: "):
+                    display_name = display_name[:LCD_LINE_LENGTH - len("Teacher: ") - 3] + "..."
                 logger.info("Teacher: %s", teacher['name'])
                 if lcd:
-                    lcd.text(f"Teacher: {teacher['name']}", 1)
+                    lcd.text(f"Teacher: {display_name}", 1)
 
         if person_type and person_id:
             cache_key = (person_type, person_id)

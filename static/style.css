@@ -1,8 +1,25 @@
 /* General styles */
+:root {
+    --brown-dark: #4A2C2A;
+    --brown-medium: #7B3F00;
+    --brown-light: #D2B48C;
+    --white: #FFFFFF;
+    --off-white: #F8F8F8;
+    --text-dark: #333333;
+    --text-light: #FFFFFF;
+    --border-color: #C0C0C0;
+    --shadow-color: rgba(0,0,0,0.1);
+
+    /* Status colors - adjusted for scheme */
+    --success-color: #28a745; /* Green */
+    --error-color: #dc3545;   /* Red */
+    --info-color: #17a2b8;    /* Blue */
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa;
-    color: #333;
+    background-color: var(--off-white);
+    color: var(--text-dark);
     margin: 0;
     line-height: 1.6;
 }
@@ -15,8 +32,8 @@ body {
 
 /* Header and Navigation */
 header {
-    background: #fff;
-    border-bottom: 1px solid #ddd;
+    background: var(--brown-dark);
+    border-bottom: 1px solid var(--brown-medium);
     padding: 10px 20px;
 }
 
@@ -29,7 +46,7 @@ nav {
 nav .brand {
     font-size: 1.5em;
     font-weight: bold;
-    color: #0056b3;
+    color: var(--text-light);
     text-decoration: none;
 }
 
@@ -47,19 +64,19 @@ nav ul li {
 
 nav ul li a {
     text-decoration: none;
-    color: #555;
+    color: var(--brown-light);
     font-weight: 500;
     transition: color 0.3s ease;
 }
 
 nav ul li a:hover, nav ul li a.active {
-    color: #0056b3;
+    color: var(--white);
 }
 
 /* Buttons */
 .btn, button {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--brown-medium);
+    color: var(--text-light);
     border: none;
     padding: 10px 15px;
     border-radius: 5px;
@@ -70,30 +87,32 @@ nav ul li a:hover, nav ul li a.active {
 }
 
 .btn:hover, button:hover {
-    background-color: #0056b3;
+    background-color: var(--brown-dark);
 }
 
 .btn-secondary {
-    background-color: #6c757d;
+    background-color: var(--brown-light);
+    color: var(--text-dark);
 }
 
 .btn-secondary:hover {
-    background-color: #5a6268;
+    background-color: var(--brown-medium);
+    color: var(--text-light);
 }
 
 /* Cards */
 .card {
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--white);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 .card h2, .card h3 {
     margin-top: 0;
-    color: #333;
+    color: var(--brown-dark);
 }
 
 /* Forms */
@@ -102,10 +121,10 @@ form label {
     margin-bottom: 15px;
 }
 
-form input[type="text"], form input[type="password"], form select {
+form input[type="text"], form input[type="password"], form input[type="email"], form select {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     box-sizing: border-box;
 }
@@ -120,11 +139,12 @@ table {
 table th, table td {
     text-align: left;
     padding: 12px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border-color);
 }
 
 table th {
-    background-color: #f2f2f2;
+    background-color: var(--off-white);
+    color: var(--brown-dark);
 }
 
 /* Flash Messages */
@@ -135,25 +155,25 @@ table th {
 }
 
 .flash.success {
-    background-color: #d4edda;
-    color: #155724;
+    background-color: #d4edda; /* Light green */
+    color: #155724; /* Dark green */
     border: 1px solid #c3e6cb;
 }
 
 .flash.error {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: #f8d7da; /* Light red */
+    color: #721c24; /* Dark red */
     border: 1px solid #f5c6cb;
 }
 
 /* Status indicators */
 .status-present {
-    color: #28a745;
+    color: var(--success-color);
     font-weight: bold;
 }
 
 .status-absent {
-    color: #dc3545;
+    color: var(--error-color);
     font-weight: bold;
 }
 

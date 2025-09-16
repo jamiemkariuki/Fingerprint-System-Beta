@@ -29,7 +29,7 @@ def _image_to_template(lcd_obj, slot):
     if finger.image_2_tz(slot) != 0:
         if lcd_obj:
             lcd_obj.clear()
-            lcd_obj.text(f"Scan fail (slot {slot})", 1)
+            lcd_obj.text(f"Scan fail {slot}", 1)
         return False
     return True
 
