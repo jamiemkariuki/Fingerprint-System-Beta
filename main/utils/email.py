@@ -56,11 +56,19 @@ def send_email(recipient_email, subject, body, attachment_data, attachment_filen
 
 def generate_and_send_reports():
     logger.info("Starting daily report generation...")
-    today = datetime.today().date()
+    today = datetime.today()
     conn = None
     try:
         conn = get_db()
         cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT `value` FROM Settings WHERE `key` = 'send_days'")
+        send_days_setting = cursor.fetchone()
+        send_days = send_days_setting['value'].split(',') if send_days_setting else []
+
+        if str(today.weekday()) not in send_days:
+            logger.info(f"Today is not a scheduled day to send reports. Skipping.")
+            return
 
         cursor.execute("SELECT * FROM Teachers")
         teachers = cursor.fetchall()
@@ -77,13 +85,13 @@ def generate_and_send_reports():
             students = cursor.fetchall()
 
             for student in students:
-                student["status"] = _get_student_attendance_status(cursor, student["id"], today)
+                student["status"] = _get_student_attendance_status(cursor, student["id"], today.date())
 
-            pdf_data = generate_class_attendance_pdf(teacher_class, students, today)
+            pdf_data = generate_class_attendance_pdf(teacher_class, students, today.date())
 
-            subject = f"Daily Attendance Report for Class {teacher_class} - {today.strftime('%Y-%m-%d')}"
+            subject = f"Daily Attendance Report for Class {teacher_class} - {today.date().strftime('%Y-%m-%d')}"
             body = f"Please find attached the daily attendance report for your class, {teacher_class}."
-            attachment_filename = f"{teacher_class}_attendance_{today}.pdf"
+            attachment_filename = f"{teacher_class}_attendance_{today.date()}.pdf"
 
             send_email(teacher_email, subject, body, pdf_data, attachment_filename)
 
