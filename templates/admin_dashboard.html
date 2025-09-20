@@ -67,74 +67,78 @@
 
 <div class="card">
     <h3>Teachers</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Class</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for t in teachers %}
+    <div class="table-responsive">
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ t.id }}</td>
-                    <td>{{ t.name }}</td>
-                    <td>{{ t.username }}</td>
-                    <td>{{ t.email }}</td>
-                    <td>{{ t.class }}</td>
-                    <td>
-                        <form method="post" action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}" onsubmit="return confirm('Delete teacher?');">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="btn-secondary">Delete</button>
-                        </form>
-                    </td>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Class</th>
+                    <th>Actions</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for t in teachers %}
+                    <tr>
+                        <td>{{ t.id }}</td>
+                        <td>{{ t.name }}</td>
+                        <td>{{ t.username }}</td>
+                        <td>{{ t.email }}</td>
+                        <td>{{ t.class }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}" onsubmit="return confirm('Delete teacher?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn-secondary">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="card">
     <h3>Students</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Class</th>
-                <th>Fingerprint ID</th>
-                <th>Status (Today)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for u in users %}
+    <div class="table-responsive">
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ u.id }}</td>
-                    <td>{{ u.name }}</td>
-                    <td>{{ u.class }}</td>
-                    <td>{{ u.fingerprint_id or '-' }}</td>
-                    <td>
-                        {% if u.status == 'Present' %}
-                            <span class="status-present">Present</span>
-                        {% else %}
-                            <span class="status-absent">Absent</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="post" action="{{ url_for('admin.delete_student', user_id=u.id) }}" onsubmit="return confirm('Delete student?');" style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="btn-secondary">Delete</button>
-                        </form>
-                        <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn" target="_blank" style="margin-left: 5px;">PDF Report</a>
-                    </td>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Fingerprint ID</th>
+                    <th>Status (Today)</th>
+                    <th>Actions</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.name }}</td>
+                        <td>{{ u.class }}</td>
+                        <td>{{ u.fingerprint_id or '-' }}</td>
+                        <td>
+                            {% if u.status == 'Present' %}
+                                <span class="status-present">Present</span>
+                            {% else %}
+                                <span class="status-absent">Absent</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin.delete_student', user_id=u.id) }}" onsubmit="return confirm('Delete student?');" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn-secondary">Delete</button>
+                            </form>
+                            <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn" target="_blank" style="margin-left: 5px;">PDF Report</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

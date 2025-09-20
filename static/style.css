@@ -260,6 +260,10 @@ table tbody tr:hover {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    body {
+        font-size: 0.95rem;
+    }
+
     nav {
         flex-direction: column;
         align-items: flex-start;
@@ -287,5 +291,31 @@ table tbody tr:hover {
     .btn, button {
         width: 100%;
         margin-top: 10px;
+        padding: 15px;
+    }
+
+    form label {
+        font-size: 1.1em;
+    }
+
+    .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive table {
+        min-width: 600px; /* Adjust as needed */
+    }
+}
+
+@media (max-width: 480px) {
+    nav .brand {
+        font-size: 1.5em;
+    }
+
+    .card h2, .card h3 {
+        font-size: 1.4em;
     }
 }
