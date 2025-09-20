@@ -112,11 +112,17 @@ CRON_CMD="0 11 * * * cd $PROJECT_DIR && $PROJECT_DIR/.venv/bin/python $PROJECT_D
 
 echo "Cron job added to run daily at 11 AM."
 
-print_step "Step 9: Setting up systemd service..."
+print_step "Step 9: Configuring git safe directory..."
 
 # Get the current user and project directory
 CURRENT_USER=$(whoami)
 PROJECT_DIR=$(pwd)
+
+sudo -u $CURRENT_USER git config --global --add safe.directory $PROJECT_DIR
+
+echo "Git safe directory configured."
+
+print_step "Step 10: Setting up systemd service..."
 
 # Create the systemd service file
 cat > fingerprint.service <<EOF
@@ -137,7 +143,7 @@ EOF
 
 sudo mv fingerprint.service /etc/systemd/system/fingerprint.service
 
-print_step "Step 10: Enabling and starting the service..."
+print_step "Step 11: Enabling and starting the service..."
 
 sudo systemctl daemon-reload
 sudo systemctl enable fingerprint.service
