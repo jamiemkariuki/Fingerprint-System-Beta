@@ -15,7 +15,7 @@ sudo apt-get update
 
 print_step "Step 2: Installing system dependencies..."
 # python3-dev and libffi-dev are for `cffi` which is a dependency of `bcrypt`
-sudo apt-get install -y python3-venv python3-pip mysql-server python3-dev libffi-dev
+sudo apt-get install -y python3-venv python3-pip mariadb-server python3-dev libffi-dev
 
 print_step "Step 3: Setting up Python virtual environment..."
 if [ -d ".venv" ]; then
