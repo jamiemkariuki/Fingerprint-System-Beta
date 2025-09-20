@@ -51,6 +51,18 @@ CREATE TABLE IF NOT EXISTS `FingerprintLogs` (
   PRIMARY KEY (`id`),
   KEY `idx_logs_person_day` (`person_type`, `person_id`, `timestamp` )
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Settings table
+CREATE TABLE IF NOT EXISTS `Settings` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `key` VARCHAR(255) NOT NULL,
+  `value` TEXT,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_setting_key` (`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Default settings
+INSERT INTO `Settings` (`key`, `value`) VALUES ('send_days', '1,2,3,4,5') ON DUPLICATE KEY UPDATE `key`=`key`;
   
 
 -- Optional: seed initial admin (change password after hashing externally if desired)

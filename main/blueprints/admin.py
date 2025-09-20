@@ -3,24 +3,14 @@ from datetime import datetime
 import bcrypt
 import mysql.connector
 from main.database import get_db
+from main.utils.common import _get_student_attendance_status
+from main.utils.email import generate_and_send_reports
 from main.hardware.fingerprint import finger
 import logging
 
 logger = logging.getLogger(__name__)
 
 admin_bp = Blueprint('admin', __name__)
-
-def _get_student_attendance_status(cursor, student_id, today):
-    cursor.execute("""
-        SELECT 1 FROM FingerprintLogs
-        WHERE person_type = 'student'
-        AND person_id = %s
-        AND DATE(timestamp) = %s
-        AND TIME(timestamp) BETWEEN '05:00:00' AND '22:00:00'
-        LIMIT 1
-    """, (student_id, today))
-    log = cursor.fetchone()
-    return "Present" if log else "Absent"
 
 @admin_bp.route('/dashboard')
 def admin_dashboard():
@@ -43,7 +33,11 @@ def admin_dashboard():
         for user in users:
             user["status"] = _get_student_attendance_status(cursor, user["id"], today)
 
-        return render_template("admin_dashboard.html", teachers=teachers, users=users)
+        cursor.execute("SELECT `value` FROM Settings WHERE `key` = 'send_days'")
+        send_days_setting = cursor.fetchone()
+        send_days = send_days_setting['value'].split(',') if send_days_setting else []
+
+        return render_template("admin_dashboard.html", teachers=teachers, users=users, send_days=send_days)
     except mysql.connector.Error as e:
         logger.exception("MySQL Error on admin dashboard: %s", e)
         flash(f"Database error: {e}", "error")
@@ -51,6 +45,30 @@ def admin_dashboard():
     finally:
         if conn:
             conn.close()
+
+@admin_bp.route('/save_settings', methods=['POST'])
+def save_settings():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    send_days = request.form.getlist("send_days")
+    send_days_str = ",".join(send_days)
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO Settings (`key`, `value`) VALUES ('send_days', %s) ON DUPLICATE KEY UPDATE `value` = %s", (send_days_str, send_days_str))
+        conn.commit()
+        flash("Settings saved successfully!", "success")
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error saving settings: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("admin.admin_dashboard"))
 
 @admin_bp.route('/create_teacher', methods=['POST'])
 def create_teacher():
@@ -217,3 +235,18 @@ def admin_signup():
 def admin_logout():
     session.pop("admin_id", None)
     return redirect(url_for("main.home"))
+
+@admin_bp.route('/send_reports', methods=['POST'])
+def send_reports():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    try:
+        flash("Sending reports... This may take a moment.", "info")
+        generate_and_send_reports()
+        flash("Reports sent successfully!", "success")
+    except Exception as e:
+        logger.exception(f"Error sending reports: {e}")
+        flash(f"An error occurred while sending the reports: {e}", "error")
+
+    return redirect(url_for("admin.admin_dashboard"))

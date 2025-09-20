@@ -3,6 +3,7 @@ from datetime import datetime
 import bcrypt
 import mysql.connector
 from main.database import get_db
+from main.utils.common import _get_student_attendance_status
 from main.utils.pdf import generate_attendance_pdf, generate_class_attendance_pdf
 from main.hardware.fingerprint import enroll_fingerprint
 from main.hardware.lcd import lcd
@@ -11,18 +12,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 teacher_bp = Blueprint('teacher', __name__)
-
-def _get_student_attendance_status(cursor, student_id, today):
-    cursor.execute("""
-        SELECT 1 FROM FingerprintLogs
-        WHERE person_type = 'student'
-        AND person_id = %s
-        AND DATE(timestamp) = %s
-        AND TIME(timestamp) BETWEEN '05:00:00' AND '22:00:00'
-        LIMIT 1
-    """, (student_id, today))
-    log = cursor.fetchone()
-    return "Present" if log else "Absent"
 
 @teacher_bp.route('/dashboard')
 def teacher_dashboard():
