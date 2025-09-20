@@ -112,18 +112,38 @@ CRON_CMD="0 11 * * * cd $PROJECT_DIR && $PROJECT_DIR/.venv/bin/python $PROJECT_D
 
 echo "Cron job added to run daily at 11 AM."
 
-print_step "Setup Complete!"
-echo -e "\n\033[1;32mYour Raspberry Pi is now set up to run the Fingerprint System.\033[0m"
+print_step "Step 9: Setting up systemd service..."
 
-read -p "Do you want to start the application now? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]
-  then
-    print_step "Starting application..."
-    source .venv/bin/activate
-    nohup python wsgi.py > flask_app.log 2>&1 &
-    nohup python fingerprint_listener.py > fingerprint_listener.log 2>&1 &
-    echo "The web application and fingerprint listener have been started in the background."
-    echo "You can view their logs in flask_app.log and fingerprint_listener.log"
-    echo "You can access the web application at http://<your-pi-ip>:5000"
-fi
+# Get the current user and project directory
+CURRENT_USER=$(whoami)
+PROJECT_DIR=$(pwd)
+
+# Create the systemd service file
+cat > fingerprint.service <<EOF
+[Unit]
+Description=Fingerprint Attendance System
+After=network.target mysql.service
+
+[Service]
+User=$CURRENT_USER
+WorkingDirectory=$PROJECT_DIR
+ExecStart=$PROJECT_DIR/start.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mv fingerprint.service /etc/systemd/system/fingerprint.service
+
+print_step "Step 10: Enabling and starting the service..."
+
+sudo systemctl daemon-reload
+sudo systemctl enable fingerprint.service
+sudo systemctl start fingerprint.service
+
+print_step "Setup Complete!"
+echo -e "\n\033[1;32mYour Raspberry Pi is now set up to run the Fingerprint System as a service.\033[0m"
+echo "The application will now start automatically on boot."
+echo "You can check the status of the service with: sudo systemctl status fingerprint.service"

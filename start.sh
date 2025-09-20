@@ -14,10 +14,15 @@ print_step "Step 1: Fetching and pulling latest changes from git..."
 git fetch --all
 git pull
 
-print_step "Step 2: Activating virtual environment..."
+print_step "Step 2: Stopping any existing application processes..."
+# Use pkill to gracefully kill the processes by name. The -f flag matches against the full command line.
+pkill -f "python wsgi.py" || true
+pkill -f "python fingerprint_listener.py" || true
+
+print_step "Step 3: Activating virtual environment..."
 source .venv/bin/activate
 
-print_step "Step 3: Starting the application..."
+print_step "Step 4: Starting the application..."
 
 nohup python wsgi.py > flask_app.log 2>&1 &
 nohup python fingerprint_listener.py > fingerprint_listener.log 2>&1 &
