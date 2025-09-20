@@ -122,18 +122,19 @@ sudo -u $CURRENT_USER git config --global --add safe.directory $PROJECT_DIR
 
 echo "Git safe directory configured."
 
-print_step "Step 10: Setting up systemd service..."
+print_step "Step 10: Setting up systemd services..."
 
-# Create the systemd service file
-cat > fingerprint.service <<EOF
+# Create the web app service file
+cat > fingerprint-web.service <<EOF
 [Unit]
-Description=Fingerprint Attendance System
+Description=Fingerprint Web App
 After=network.target mysql.service
 
 [Service]
 User=$CURRENT_USER
+Group=$CURRENT_USER
 WorkingDirectory=$PROJECT_DIR
-ExecStart=$PROJECT_DIR/start.sh
+ExecStart=$PROJECT_DIR/.venv/bin/python wsgi.py
 Restart=always
 RestartSec=3
 
@@ -141,15 +142,39 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-sudo mv fingerprint.service /etc/systemd/system/fingerprint.service
+sudo mv fingerprint-web.service /etc/systemd/system/fingerprint-web.service
 
-print_step "Step 11: Enabling and starting the service..."
+# Create the listener service file
+cat > fingerprint-listener.service <<EOF
+[Unit]
+Description=Fingerprint Listener
+After=network.target mysql.service
+
+[Service]
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$PROJECT_DIR
+ExecStart=$PROJECT_DIR/.venv/bin/python fingerprint_listener.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mv fingerprint-listener.service /etc/systemd/system/fingerprint-listener.service
+
+print_step "Step 11: Enabling and starting the services..."
 
 sudo systemctl daemon-reload
-sudo systemctl enable fingerprint.service
-sudo systemctl start fingerprint.service
+sudo systemctl enable fingerprint-web.service
+sudo systemctl enable fingerprint-listener.service
+sudo systemctl start fingerprint-web.service
+sudo systemctl start fingerprint-listener.service
 
 print_step "Setup Complete!"
 echo -e "\n\033[1;32mYour Raspberry Pi is now set up to run the Fingerprint System as a service.\033[0m"
 echo "The application will now start automatically on boot."
-echo "You can check the status of the service with: sudo systemctl status fingerprint.service"
+echo "You can check the status of the services with:"
+echo "sudo systemctl status fingerprint-web.service"
+echo "sudo systemctl status fingerprint-listener.service"
