@@ -35,4 +35,25 @@ def create_app(config_class=Config):
     logging.basicConfig(level=getattr(logging, app.config["LOG_LEVEL"], logging.INFO),
                         format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 
+    # Start the fingerprint listener
+    from main.hardware.fingerprint_listener import FingerprintListener
+    import queue
+
+    scan_queue = queue.Queue()
+    fingerprint_thread = FingerprintListener(app, scan_queue)
+    fingerprint_thread.start()
+
+    # Create a blueprint for the API
+    from flask import Blueprint, jsonify
+    api_bp = Blueprint('api', __name__)
+
+    @api_bp.route('/fingerprint_scans')
+    def fingerprint_scans():
+        scans = []
+        while not scan_queue.empty():
+            scans.append(scan_queue.get())
+        return jsonify(scans)
+
+    app.register_blueprint(api_bp, url_prefix='/api')
+
     return app
