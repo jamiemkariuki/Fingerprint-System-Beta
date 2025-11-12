@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS `Settings` (
 
 -- Default settings
 INSERT INTO `Settings` (`key`, `value`) VALUES ('send_days', '1,2,3,4,5') ON DUPLICATE KEY UPDATE `key`=`key`;
+INSERT INTO `Settings` (`key`, `value`) VALUES ('fingerprint_listener_enabled', '1') ON DUPLICATE KEY UPDATE `key`=`key`;
   
 
 -- Optional: seed initial admin (change password after hashing externally if desired)

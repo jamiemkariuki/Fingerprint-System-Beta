@@ -176,40 +176,43 @@ class FingerprintListener(threading.Thread):
                 if conn:
                     conn.close()
 
-    def _is_listener_enabled(self):
-        """Check if the fingerprint listener is enabled in settings."""
-        with self.app.app_context():
-            conn = None
-            try:
-                conn = connect_db()
-                cursor = conn.cursor(dictionary=True)
-                cursor.execute("SELECT `value` FROM `Settings` WHERE `key` = 'fingerprint_listener_enabled'")
-                setting = cursor.fetchone()
-                # Default to enabled if setting not found
-                if setting is None or setting['value'] == '1':
-                    return True
-                return False
-            except mysql.connector.Error as e:
-                logger.exception("DB error checking listener status: %s", e)
-                return True # Default to enabled on error
-            except Exception as e:
-                logger.exception("Unexpected error checking listener status: %s", e)
-                return True # Default to enabled on error
-            finally:
-                if conn:
-                    conn.close()
-
     def run(self):
         logger.info("Fingerprint listener started. Waiting for scans...")
         if lcd:
             lcd.text("Listener Ready", 1)
         while True:
-            if not self._is_listener_enabled():
-                logger.debug("Listener is disabled. Sleeping...")
+            listener_enabled = True
+            with self.app.app_context():
+                conn = None
+                try:
+                    from main.database import get_db as connect_db
+                    conn = connect_db()
+                    cursor = conn.cursor(dictionary=True)
+                    cursor.execute("SELECT value FROM Settings WHERE `key` = %s", ('fingerprint_listener_enabled',))
+                    result = cursor.fetchone()
+                    if result and result['value'] == '0':
+                        listener_enabled = False
+                except Exception as e:
+                    logger.exception("Could not check fingerprint listener status: %s", e)
+                finally:
+                    if conn:
+                        conn.close()
+
+            if not listener_enabled:
+                logger.info("Fingerprint listener is disabled via settings.")
                 if lcd:
                     lcd.text("Listener Off", 1)
-                time.sleep(10) # Check every 10 seconds
+                    lcd.text("", 2)
+                time.sleep(5)  # Check every 5 seconds if the status has changed
                 continue
+
+            # If the listener was off, the screen was showing "Listener Off".
+            # We need to put back the "Listener Ready" message.
+            if lcd:
+                # To avoid flickering, we only write if the message is not already there.
+                # This is a bit more complex to check, so for now we just write it.
+                lcd.text("Listener Ready", 1)
+
 
             self._clear_old_scans()
             try:
