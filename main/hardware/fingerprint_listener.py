@@ -176,11 +176,41 @@ class FingerprintListener(threading.Thread):
                 if conn:
                     conn.close()
 
+    def _is_listener_enabled(self):
+        """Check if the fingerprint listener is enabled in settings."""
+        with self.app.app_context():
+            conn = None
+            try:
+                conn = connect_db()
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute("SELECT `value` FROM `Settings` WHERE `key` = 'fingerprint_listener_enabled'")
+                setting = cursor.fetchone()
+                # Default to enabled if setting not found
+                if setting is None or setting['value'] == '1':
+                    return True
+                return False
+            except mysql.connector.Error as e:
+                logger.exception("DB error checking listener status: %s", e)
+                return True # Default to enabled on error
+            except Exception as e:
+                logger.exception("Unexpected error checking listener status: %s", e)
+                return True # Default to enabled on error
+            finally:
+                if conn:
+                    conn.close()
+
     def run(self):
         logger.info("Fingerprint listener started. Waiting for scans...")
         if lcd:
             lcd.text("Listener Ready", 1)
         while True:
+            if not self._is_listener_enabled():
+                logger.debug("Listener is disabled. Sleeping...")
+                if lcd:
+                    lcd.text("Listener Off", 1)
+                time.sleep(10) # Check every 10 seconds
+                continue
+
             self._clear_old_scans()
             try:
                 self.match_fingerprint()

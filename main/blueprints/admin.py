@@ -37,7 +37,11 @@ def admin_dashboard():
         send_days_setting = cursor.fetchone()
         send_days = send_days_setting['value'].split(',') if send_days_setting else []
 
-        return render_template("admin_dashboard.html", teachers=teachers, users=users, send_days=send_days)
+        cursor.execute("SELECT `value` FROM `Settings` WHERE `key` = 'fingerprint_listener_enabled'")
+        listener_setting = cursor.fetchone()
+        listener_enabled = listener_setting['value'] == '1' if listener_setting else True
+
+        return render_template("admin_dashboard.html", teachers=teachers, users=users, send_days=send_days, listener_enabled=listener_enabled)
     except mysql.connector.Error as e:
         logger.exception("MySQL Error on admin dashboard: %s", e)
         flash(f"Database error: {e}", "error")
@@ -45,6 +49,38 @@ def admin_dashboard():
     finally:
         if conn:
             conn.close()
+
+@admin_bp.route('/fingerprint_listener/toggle', methods=['POST'])
+def toggle_fingerprint_listener():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT `value` FROM `Settings` WHERE `key` = 'fingerprint_listener_enabled'")
+        setting = cursor.fetchone()
+
+        new_value = '0'
+        if setting is None or setting['value'] == '0':
+            new_value = '1'
+
+        cursor.execute(
+            "INSERT INTO `Settings` (`key`, `value`) VALUES ('fingerprint_listener_enabled', %s) ON DUPLICATE KEY UPDATE `value` = %s",
+            (new_value, new_value)
+        )
+        conn.commit()
+        flash(f"Fingerprint listener {'enabled' if new_value == '1' else 'disabled'}!", "success")
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error toggling listener: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("admin.admin_dashboard"))
 
 @admin_bp.route('/save_settings', methods=['POST'])
 def save_settings():
