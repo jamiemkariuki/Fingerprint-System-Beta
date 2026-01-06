@@ -64,10 +64,26 @@ def generate_and_send_reports():
 
         cursor.execute("SELECT `value` FROM Settings WHERE `key` = 'send_days'")
         send_days_setting = cursor.fetchone()
-        send_days = send_days_setting['value'].split(',') if send_days_setting else []
+        # Normalize send_days to 0-6 (Monday=0) regardless of input (0-6 or 1-7)
+        send_days = []
+        if send_days_setting and isinstance(send_days_setting, dict) and 'value' in send_days_setting:
+            raw = str(send_days_setting['value'])
+            for part in raw.split(','):
+                part = part.strip()
+                if not part:
+                    continue
+                try:
+                    d = int(part)
+                except ValueError:
+                    continue
+                if 0 <= d <= 6:
+                    send_days.append(str(d))
+                elif 1 <= d <= 7:
+                    send_days.append(str(d - 1))
 
-        if str(today.weekday()) not in send_days:
-            logger.info(f"Today is not a scheduled day to send reports. Skipping.")
+        today_num = today.weekday()
+        if str(today_num) not in send_days:
+            logger.info("Today (%s) is not within the scheduled reporting days (%s). Skipping.", today.date(), send_days)
             return
 
         cursor.execute("SELECT * FROM Teachers")
@@ -78,7 +94,7 @@ def generate_and_send_reports():
             teacher_class = teacher.get("class")
 
             if not teacher_email or not teacher_class:
-                logger.warning(f"Teacher with ID {teacher['id']} is missing email or class. Skipping.")
+                logger.warning("Teacher with ID %s is missing email or class. Skipping.", teacher.get('id'))
                 continue
 
             cursor.execute("SELECT * FROM Users WHERE class = %s ORDER BY name", (teacher_class,))

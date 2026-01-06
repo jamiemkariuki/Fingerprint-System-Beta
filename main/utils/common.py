@@ -1,6 +1,10 @@
 from datetime import datetime
 from main.database import get_db
 import mysql.connector
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def get_setting(key):
     """Fetches a setting value from the database."""
@@ -13,13 +17,14 @@ def get_setting(key):
         result = cursor.fetchone()
         return result['value'] if result else None
     except mysql.connector.Error as e:
-        print(f"Database error in get_setting: {e}")
+        logger.exception("Database error in get_setting: %s", e)
         return None
     finally:
         if cursor:
             cursor.close()
         if db:
             db.close()
+
 
 def update_setting(key, value):
     """Updates a setting value in the database."""
@@ -32,7 +37,7 @@ def update_setting(key, value):
         db.commit()
         return True
     except mysql.connector.Error as e:
-        print(f"Database error in update_setting: {e}")
+        logger.exception("Database error in update_setting: %s", e)
         db.rollback()
         return False
     finally:
