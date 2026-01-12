@@ -237,35 +237,8 @@ def delete_teacher(teacher_id):
 
 @admin_bp.route("/signup", methods=["GET", "POST"])
 def admin_signup():
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
-
-        if password != confirm_password:
-            flash("Passwords do not match!", "error")
-            return redirect(url_for("admin.admin_signup"))
-
-        hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-        conn = None
-        try:
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO Admins (username, password_hash) VALUES (%s, %s)",
-                           (username, hashed_pw))
-            conn.commit()
-            flash("Admin account created successfully! You can now log in.", "success")
-            return redirect(url_for("admin.admin_login"))
-        except mysql.connector.Error as err:
-            logger.exception("Error creating admin: %s", err)
-            flash(f"Error creating admin: {err}", "error")
-            return redirect(url_for("admin.admin_signup"))
-        finally:
-            if conn:
-                conn.close()
-
-    return render_template("admin_signup.html")
+    flash("Admin signup via UI is disabled. Create admins via terminal.", "error")
+    return redirect(url_for("admin.admin_login"))
 
 @admin_bp.route('/logout')
 def admin_logout():
