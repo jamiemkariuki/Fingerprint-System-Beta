@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pigpio \
     python3-pigpio \
     python3-rpi.gpio \
+    || true \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
