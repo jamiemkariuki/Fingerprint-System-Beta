@@ -32,5 +32,8 @@ services:
       - SMTP_PASSWORD=your-password
     ports:
       - "5000:5000"
+    devices:
+      - "/dev/ttyAMA0:/dev/ttyAMA0"
+      - "/dev/serial0:/dev/serial0"
 volumes:
   db_data:

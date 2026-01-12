@@ -129,3 +129,6 @@ Contributions welcome. Please follow your project’s guidelines, run tests, and
 
 ## License
 This project is provided as-is under your chosen license.
+
+
+Note: The Raspberry Pi provisioning script setup_pi.sh has been removed. All provisioning is now handled via Docker-based deployment (docker-compose). To enable GPIO in Docker containers, pass through devices: /dev/ttyAMA0 and /dev/serial0, and ensure the host runs pigpio or pigpiod (the container entrypoint will start pigpiod if available).
