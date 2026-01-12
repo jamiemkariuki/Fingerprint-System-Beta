@@ -123,3 +123,40 @@ echo "Git safe directory configured."
 print_step "Containerization notice"
 echo "For containerized deployment instructions, refer to README.md."
 echo "No systemd service will be configured in this script."
+
+# GPIO support for Raspberry Pi
+print_step "Step GPIO: Configuring Raspberry Pi GPIO (pigpio, UART, and permissions)"
+
+# Detect Raspberry Pi environment; adapt gracefully if not present
+if [ -f /etc/os-release ] && (grep -qi 'raspbian' /etc/os-release || grep -qi 'raspberry' /etc/os-release); then
+  echo "Configuring GPIO for Raspberry Pi..."
+  print_step "Installing GPIO libraries (pigpio, Python bindings)"
+  sudo apt-get update
+  sudo apt-get install -y pigpio python3-pigpio python3-rpi.gpio
+
+  print_step "Starting pigpio daemon"
+  if command -v systemctl >/dev/null 2>&1; then
+    sudo systemctl enable --now pigpiod || true
+  else
+    if command -v pigpiod >/dev/null 2>&1; then
+      sudo pigpiod
+    fi
+  fi
+
+  print_step "Adding current user to dialout group for serial access"
+  CURRENT_USER=$(whoami)
+  sudo usermod -a -G dialout $CURRENT_USER
+
+  print_step "Enabling UART and disabling serial console in boot config"
+  if [ -f /boot/config.txt ]; then
+    grep -q '^enable_uart=1' /boot/config.txt || echo 'enable_uart=1' | sudo tee -a /boot/config.txt
+  fi
+  if [ -f /boot/cmdline.txt ]; then
+    sudo sed -i 's/ console=serial0,115200//g' /boot/cmdline.txt
+    sudo sed -i 's/console=ttyS0,115200//g' /boot/cmdline.txt
+  fi
+
+  print_step "GPIO setup complete"
+else
+  echo "GPIO setup skipped (not running on Raspberry Pi)."
+fi
