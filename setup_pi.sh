@@ -120,34 +120,6 @@ sudo -u $CURRENT_USER git config --global --add safe.directory $PROJECT_DIR
 
 echo "Git safe directory configured."
 
-print_step "Step 10: Setting up systemd service (single service) for the web app..."
-SERVICE_NAME="fingerprint-web.service"
-cat > fingerprint-web.service <<EOF
-[Unit]
-Description=Fingerprint Web App
-After=network.target mysql.service
-
-[Service]
-User=$CURRENT_USER
-Group=$CURRENT_USER
-WorkingDirectory=$PROJECT_DIR
-ExecStart=$PROJECT_DIR/.venv/bin/python wsgi.py
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo mv fingerprint-web.service /etc/systemd/system/fingerprint-web.service
-
-print_step "Step 11: Enabling and starting the service..."
-
-sudo systemctl daemon-reload
-sudo systemctl enable fingerprint-web.service
-sudo systemctl start fingerprint-web.service
-
-print_step "Setup Complete!"
-echo -e "\n\033[1;32mYour Raspberry Pi is now set up to run the Fingerprint System as a service.\033[0m"
-echo "You can check the status of the service with:"
-echo "sudo systemctl status fingerprint-web.service"
+print_step "Containerization notice"
+echo "For containerized deployment instructions, refer to README.md."
+echo "No systemd service will be configured in this script."
