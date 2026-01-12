@@ -9,9 +9,9 @@ import logging
 from dotenv import load_dotenv
 import mysql.connector
 
-from main.database import get_db
-from main.utils.common import _get_student_attendance_status
-from main.utils.pdf import generate_class_attendance_pdf
+from ..database import get_db
+from ..utils.common import _get_student_attendance_status
+from ..utils.pdf import generate_class_attendance_pdf
 
 # Load environment variables from .env file
 load_dotenv()

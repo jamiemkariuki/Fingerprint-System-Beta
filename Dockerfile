@@ -33,7 +33,10 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY . .
 
+# Expose port 5000 for the app
 EXPOSE 5000
+
+ENV PYTHONPATH=/app/src:/app
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "wsgi:application"]

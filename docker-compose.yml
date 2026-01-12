@@ -28,8 +28,8 @@ services:
       - DB_PASSWORD=secret
       - SMTP_HOST=smtp.office365.com
       - SMTP_PORT=587
-      - SMTP_USERNAME=you@example.com
-      - SMTP_PASSWORD=your-password
+      - SMTP_USERNAME=attendance@stnicholasschools.sc.ke
+      - SMTP_PASSWORD=RCT@2025
     ports:
       - "5000:5000"
     devices:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from main.database import get_db
+from ..database import get_db
 import mysql.connector
 import logging
 

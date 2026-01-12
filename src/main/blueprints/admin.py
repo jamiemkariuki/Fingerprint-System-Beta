@@ -2,10 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime
 import bcrypt
 import mysql.connector
-from main.database import get_db
-from main.utils.common import _get_student_attendance_status
-from main.utils.email import generate_and_send_reports
-from main.hardware.fingerprint import finger
+from ..database import get_db
+from ..utils.common import _get_student_attendance_status
+from ..utils.email import generate_and_send_reports
+from ..hardware.fingerprint import finger
 import logging
 
 logger = logging.getLogger(__name__)

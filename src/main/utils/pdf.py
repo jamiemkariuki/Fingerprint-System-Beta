@@ -19,6 +19,7 @@ TABLE_HEADER_TEXT_COLOR = colors.whitesmoke
 TABLE_ROW_BG = colors.beige
 TABLE_GRID_COLOR = colors.black
 
+
 def _get_common_styles():
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
@@ -36,6 +37,7 @@ def _get_common_styles():
     )
     return styles, title_style, heading_style
 
+
 def _get_table_style(header_cols, row_cols):
     return TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
@@ -48,6 +50,7 @@ def _get_table_style(header_cols, row_cols):
         ('GRID', (0, 0), (-1, -1), 1, TABLE_GRID_COLOR),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
     ])
+
 
 def generate_attendance_pdf(student, attendance_logs):
     """Generate PDF content for student attendance report"""
@@ -100,6 +103,7 @@ def generate_attendance_pdf(student, attendance_logs):
     except Exception as e:
         logger.exception("Error generating student attendance PDF: %s", e)
         raise
+
 
 def generate_class_attendance_pdf(class_name, students, date):
     """Generate PDF content for class attendance report"""

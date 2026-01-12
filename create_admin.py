@@ -2,7 +2,10 @@
 import sys
 import getpass
 import bcrypt
-from main.database import get_db
+try:
+    from src.main.database import get_db
+except Exception as e:
+    raise SystemExit("Cannot import get_db from the new src.main layout. Please ensure the new structure exists.") from e
 
 
 def main():
@@ -42,6 +45,7 @@ def main():
     finally:
         if conn:
             conn.close()
+
 
 if __name__ == '__main__':
     main()

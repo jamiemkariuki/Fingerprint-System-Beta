@@ -4,9 +4,9 @@ import logging
 from dotenv import load_dotenv
 import time
 import mysql.connector
-from main.database import get_db as connect_db
-from main.hardware.lcd import lcd
-from main.hardware.fingerprint import finger
+from ..database import get_db as connect_db
+from ..hardware.lcd import lcd
+from ..hardware.fingerprint import finger
 from datetime import datetime, timedelta
 import threading
 import queue
@@ -185,7 +185,7 @@ class FingerprintListener(threading.Thread):
             with self.app.app_context():
                 conn = None
                 try:
-                    from main.database import get_db as connect_db
+                    from ..database import get_db as connect_db
                     conn = connect_db()
                     cursor = conn.cursor(dictionary=True)
                     cursor.execute("SELECT value FROM Settings WHERE `key` = %s", ('fingerprint_listener_enabled',))
@@ -223,4 +223,3 @@ class FingerprintListener(threading.Thread):
                 if lcd:
                     lcd.text("Error in Loop", 1)
                 time.sleep(2)
-

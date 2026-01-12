@@ -30,7 +30,7 @@ class Config:
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")
-    FLASK_PORT = int(os.getenv("FLASK_PORT", "5000"))
+    FLASK_PORT = int(os.getenv("FLASK_PORT", "80"))
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
     # Email Configuration

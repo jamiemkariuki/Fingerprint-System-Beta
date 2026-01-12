@@ -73,7 +73,7 @@ def _store_model(lcd_obj, fid: int):
 # --- FIXED ENROLLMENT FUNCTION ---
 def enroll_fingerprint(db_id: int): 
     """Enroll a new fingerprint using a specific, pre-assigned ID (db_id)."""
-    from main.hardware.lcd import lcd
+    from ..hardware.lcd import lcd
 
     if not finger:
         logger.error("Fingerprint sensor unavailable")

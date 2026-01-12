@@ -3,17 +3,17 @@ import logging
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
-from main.config import Config
-from main.database import get_db
-from main.blueprints.main import main_bp
-from main.blueprints.admin import admin_bp
-from main.blueprints.teacher import teacher_bp
+from .config import Config
+from .database import get_db
+from .blueprints.main import main_bp
+from .blueprints.admin import admin_bp
+from .blueprints.teacher import teacher_bp
 
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    # Get the absolute path to the project root
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    # Compute repo root (three levels up from this file)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
     app = Flask(
         __name__,
@@ -36,7 +36,7 @@ def create_app(config_class=Config):
                         format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 
     # Start the fingerprint listener
-    from main.hardware.fingerprint_listener import FingerprintListener
+    from .hardware.fingerprint_listener import FingerprintListener
     import queue
 
     scan_queue = queue.Queue()

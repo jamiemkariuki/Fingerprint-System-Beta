@@ -1,4 +1,5 @@
 import logging
+
 try:
     from rpi_lcd import LCD
 except Exception:

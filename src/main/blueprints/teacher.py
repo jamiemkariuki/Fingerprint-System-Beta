@@ -2,11 +2,11 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime
 import bcrypt
 import mysql.connector
-from main.database import get_db
-from main.utils.common import _get_student_attendance_status
-from main.utils.pdf import generate_attendance_pdf, generate_class_attendance_pdf
-from main.hardware.fingerprint import enroll_fingerprint
-from main.hardware.lcd import lcd
+from ..database import get_db
+from ..utils.common import _get_student_attendance_status
+from ..utils.pdf import generate_attendance_pdf, generate_class_attendance_pdf
+from ..hardware.fingerprint import enroll_fingerprint
+from ..hardware.lcd import lcd
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,6 @@ def teacher_dashboard():
     finally:
         if conn:
             conn.close()
-
 
 @teacher_bp.route('/register', methods=['GET', 'POST'])
 def register_user():
@@ -113,7 +112,6 @@ def register_user():
         if conn:
             conn.close()
 
-
 @teacher_bp.route("/register_student", methods=["GET", "POST"])
 def register_student():
     if request.method == "POST":
@@ -166,7 +164,6 @@ def register_student():
 
     return render_template("register.html")
 
-
 @teacher_bp.route('/login', methods=['GET', 'POST'])
 def teacher_login():
     if request.method == "GET":
@@ -196,12 +193,10 @@ def teacher_login():
         if conn:
             conn.close()
 
-
 @teacher_bp.route('/logout')
 def teacher_logout():
     session.pop("teacher_id", None)
     return redirect(url_for("main.home"))
-
 
 @teacher_bp.route('/student/<int:student_id>/attendance_pdf')
 def student_attendance_pdf(student_id):
@@ -248,7 +243,6 @@ def student_attendance_pdf(student_id):
     finally:
         if conn:
             conn.close()
-
 
 @teacher_bp.route('/class_attendance_pdf/<string:class_name>')
 def class_attendance_pdf(class_name):
