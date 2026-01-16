@@ -22,7 +22,7 @@ Table of contents:
 
 ## What you’ll deploy
 - A containerized, production-ready deployment using Docker and optionally docker-compose to run the web app and a MariaDB database.
-- The app listens on port 5000 by default; you can override via environment variables.
+- The app listens on port 80; you can override via environment variables.
 
 ## Prerequisites
 - Docker and Docker Compose installed on your host
@@ -64,17 +64,16 @@ Table of contents:
 - docker-compose.yml provides a minimal stack with a MariaDB container and the web app container.
 - Example docker-compose.yml (adjust as needed):
 
-```
-version: "3.9"
+```yaml
 services:
   db:
     image: mariadb:10.11
     container_name: fingerprint-db
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=FingerprintDB
-      - MYSQL_USER=fingerprint_user
-      - MYSQL_PASSWORD=secret
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=fpsnsdb
+      - MYSQL_USER=fp_user
+      - MYSQL_PASSWORD=fp_pass
     volumes:
       - db_data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
@@ -83,35 +82,37 @@ services:
   web:
     build: .
     container_name: fingerprint-web
+    privileged: true
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=5000
       - DB_HOST=db
       - DB_PORT=3306
-      - DB_NAME=FingerprintDB
-      - DB_USER=fingerprint_user
-      - DB_PASSWORD=secret
+      - DB_NAME=fpsnsdb
+      - DB_USER=fp_user
+      - DB_PASSWORD=fp_pass
       - SMTP_HOST=smtp.office365.com
       - SMTP_PORT=587
       - SMTP_USERNAME=you@example.com
       - SMTP_PASSWORD=your-password
     ports:
-      - "5000:5000"
-volumes:
-  db_data:
+      - "80:5000"
+    devices:
+      - "/dev/serial0:/dev/serial0"
 ```
 
 - To deploy: run `docker-compose up --build -d` in the repository root. The DB will initialize with schema.sql on first startup.
-- Access: http://localhost:5000 (or your host IP)
+- Access: http://localhost:80 (or your host IP)
 
 ## Local development workflow
 - Development (local):
   - Create a Python virtual environment and install dependencies
   - Start the Flask app directly with wsgi.py or python -m flask run after exporting the required env vars
-  - URL: http://localhost:5000
-- Development in Docker: use `docker-compose up --build` to start the containers in the foreground, then browse to http://localhost:5000
+  - URL: http://localhost:80
+- Development in Docker: use `docker-compose up --build` to start the containers in the foreground, then browse to http://localhost:80
 
 ## Testing and validation plan
 - Validate login for Admin, create teachers, and enroll fingerprints (requires hardware or mock mode)
