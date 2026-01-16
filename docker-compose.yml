@@ -40,7 +40,7 @@ services:
       - SMTP_USERNAME=attendance@stnicholasschools.sc.ke
       - SMTP_PASSWORD=RCT@2025
     ports:
-      - "5000:5000"
+      - "80:5000"
     devices:
       - "/dev/serial0:/dev/serial0"
     networks:
