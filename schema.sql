@@ -1,6 +1,5 @@
-CREATE DATABASE IF NOT EXISTS `FingerprintDB`
-CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `FingerprintDB`;
+-- The database name is managed by docker-compose environment variables (MYSQL_DATABASE)
+
 
 -- Admins Table
 CREATE TABLE IF NOT EXISTS `Admins` (
