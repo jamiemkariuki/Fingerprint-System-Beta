@@ -187,3 +187,62 @@ def create_teacher():
     finally:
         if conn:
             conn.close()
+
+# New endpoints for subjects and auditing
+@admin_bp.route('/manage_subjects', methods=['POST'])
+def manage_subjects():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    name = request.form.get("name")
+    action = request.form.get("action", "add")
+    subject_id = request.form.get("subject_id")
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if action == "add" and name:
+            cursor.execute("INSERT INTO Subjects (name) VALUES (%s)", (name,))
+            flash(f"Subject '{name}' added.", "success")
+        elif action == "delete" and subject_id:
+            cursor.execute("DELETE FROM Subjects WHERE id = %s", (subject_id,))
+            flash("Subject deleted.", "success")
+        conn.commit()
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error managing subjects: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+    return redirect(url_for("admin.admin_dashboard"))
+
+@admin_bp.route('/assign_subject', methods=['POST'])
+def assign_subject():
+    if "admin_id" not in session and "teacher_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    student_id = request.form.get("student_id")
+    subject_id = request.form.get("subject_id")
+
+    if not student_id or not subject_id:
+        flash("Student and Subject are required.", "error")
+        return redirect(request.referrer or url_for("admin.admin_dashboard"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO StudentAudit (student_id, subject_id) VALUES (%s, %s)", (student_id, subject_id))
+        conn.commit()
+        flash("Subject assigned for auditing.", "success")
+    except mysql.connector.Error as e:
+        if "Duplicate entry" in str(e):
+            flash("This subject is already assigned to this student.", "warning")
+        else:
+            logger.exception("MySQL Error assigning subject: %s", e)
+            flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+    return redirect(request.referrer or url_for("admin.admin_dashboard"))
