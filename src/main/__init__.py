@@ -12,8 +12,8 @@ from .blueprints.teacher import teacher_bp
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    # Compute repo root (three levels up from this file)
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    # Compute repo root (two levels up from this file: src/main/__init__.py -> src -> root)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
     app = Flask(
         __name__,
