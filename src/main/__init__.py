@@ -28,6 +28,9 @@ def create_app(config_class=Config):
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(teacher_bp, url_prefix='/teacher')
+    
+    from .blueprints.parent import parent_bp
+    app.register_blueprint(parent_bp, url_prefix='/parent')
 
     # Configure logging
     logging.basicConfig(level=getattr(logging, app.config["LOG_LEVEL"], logging.INFO),

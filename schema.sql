@@ -49,6 +49,33 @@ CREATE TABLE IF NOT EXISTS `FingerprintLogs` (
   KEY idx_logs_person_day (person_type, person_id, timestamp)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Parents Table
+CREATE TABLE IF NOT EXISTS `Parents` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(128) NOT NULL,
+  email VARCHAR(128) NOT NULL,
+  phone VARCHAR(50),
+  username VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_parent_username (username),
+  UNIQUE KEY uniq_parent_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Student-Parent Relationship Table
+CREATE TABLE IF NOT EXISTS `StudentParents` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  student_id INT UNSIGNED NOT NULL,
+  parent_id INT UNSIGNED NOT NULL,
+  relationship VARCHAR(50) DEFAULT 'Parent/Guardian',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FOREIGN KEY (student_id) REFERENCES `Users`(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_id) REFERENCES `Parents`(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_student_parent (student_id, parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Settings Table
 CREATE TABLE IF NOT EXISTS `Settings` (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
