@@ -109,6 +109,9 @@ services:
 - To deploy: run `docker-compose up --build -d` in the repository root. The DB will initialize with schema.sql on first startup.
 - Access: http://localhost:80 (or your host IP)
 
+Admin creation: You can also create an admin inside the running Docker container:
+- docker-compose exec web python create_admin.py
+
 ## Local development workflow
 - Development (local):
   - Create a Python virtual environment and install dependencies
