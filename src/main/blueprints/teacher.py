@@ -41,12 +41,26 @@ def teacher_dashboard():
         for user in users:
             user["status"] = _get_student_attendance_status(cursor, user["id"], today)
 
+        cursor.execute("SELECT * FROM Parents ORDER BY name")
+        parents = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT sp.id, sp.relationship, u.name as student_name, p.name as parent_name
+            FROM StudentParents sp
+            JOIN Users u ON sp.student_id = u.id
+            JOIN Parents p ON sp.parent_id = p.id
+            ORDER BY u.name
+        """)
+        student_parent_links = cursor.fetchall()
+
         return render_template(
             "teacher_dashboard.html",
             users=users,
             classes=classes,
             selected_class=selected_class,
-            teacher_info=teacher_info
+            teacher_info=teacher_info,
+            parents=parents,
+            student_parent_links=student_parent_links
         )
 
     except mysql.connector.Error as e:
@@ -324,6 +338,77 @@ def class_attendance_pdf(class_name):
     except mysql.connector.Error as e:
         logger.exception("MySQL Error generating class PDF: %s", e)
         flash(f"Database error: {e}", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@teacher_bp.route('/create_parent', methods=['POST'])
+def create_parent():
+    if "teacher_id" not in session and "admin_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    name = request.form.get("name")
+    username = request.form.get("username")
+    email = request.form.get("email")
+    phone = request.form.get("phone", "")
+    password = request.form.get("password")
+
+    if not name or not username or not email or not password:
+        flash("Missing required fields", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO Parents (name, username, email, phone, password_hash) VALUES (%s, %s, %s, %s, %s)",
+            (name, username, email, phone, password_hash)
+        )
+        conn.commit()
+        flash(f"Parent account created successfully! Username: {username}", "success")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error creating parent: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@teacher_bp.route('/link_student_parent', methods=['POST'])
+def link_student_parent():
+    if "teacher_id" not in session and "admin_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    student_id = request.form.get("student_id")
+    parent_id = request.form.get("parent_id")
+    relationship = request.form.get("relationship", "Parent/Guardian")
+
+    if not student_id or not parent_id:
+        flash("Missing student or parent", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO StudentParents (student_id, parent_id, relationship) VALUES (%s, %s, %s)",
+            (student_id, parent_id, relationship)
+        )
+        conn.commit()
+        flash("Student linked to parent successfully!", "success")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error linking student to parent: %s", e)
+        if "Duplicate entry" in str(e):
+            flash("This student is already linked to this parent.", "warning")
+        else:
+            flash(f"Database error: {e}", "error")
         return redirect(url_for("teacher.teacher_dashboard"))
     finally:
         if conn:
