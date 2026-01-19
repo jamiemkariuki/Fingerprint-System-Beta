@@ -1,292 +1,370 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<div class="card">
-    <h3>Overview</h3>
-    <div class="grid">
-        <div class="card">
-            <h4>{{ student_count }}</h4>
-            <p>Students</p>
-        </div>
-        <div class="card">
-            <h4>{{ teacher_count }}</h4>
-            <p>Teachers</p>
-        </div>
-        <div class="card">
-            <h4>{{ subject_count }}</h4>
-            <p>Subjects</p>
-        </div>
-        <div class="card">
-            <h4>{{ audit_count }}</h4>
-            <p>Total Audits</p>
-        </div>
-        <div class="card">
-            <h4>{{ pending_count }}</h4>
-            <p>Pending Audits</p>
+<div class="admin-nav">
+    <button class="tab-link active" onclick="openTab(event, 'Overview')">Overview</button>
+    <button class="tab-link" onclick="openTab(event, 'Teachers')">Teachers</button>
+    <button class="tab-link" onclick="openTab(event, 'Students')">Students</button>
+    <button class="tab-link" onclick="openTab(event, 'Parents')">Parents</button>
+    <button class="tab-link" onclick="openTab(event, 'Links')">Links</button>
+    <button class="tab-link" onclick="openTab(event, 'Subjects')">Subjects</button>
+    <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing</button>
+    <button class="tab-link" onclick="openTab(event, 'Settings')">Settings</button>
+    <button class="tab-link" onclick="openTab(event, 'Reports')">Reports</button>
+</div>
+
+<div id="Overview" class="tab-content active">
+    <div class="card">
+        <h3>Overview</h3>
+        <div class="grid">
+            <div class="card">
+                <h4>{{ student_count }}</h4>
+                <p>Students</p>
+            </div>
+            <div class="card">
+                <h4>{{ teacher_count }}</h4>
+                <p>Teachers</p>
+            </div>
+            <div class="card">
+                <h4>{{ subject_count }}</h4>
+                <p>Subjects</p>
+            </div>
+            <div class="card">
+                <h4>{{ audit_count }}</h4>
+                <p>Total Audits</p>
+            </div>
+            <div class="card">
+                <h4>{{ pending_count }}</h4>
+                <p>Pending Audits</p>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="card">
-    <h3>Teachers Management</h3>
-    <form method="post" action="{{ url_for('admin.create_teacher') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <label for="teacher_name">Name</label>
-        <input id="teacher_name" name="name" required>
-        <label for="teacher_username">Username</label>
-        <input id="teacher_username" name="username" required>
-        <label for="teacher_email">Email</label>
-        <input id="teacher_email" name="email" type="email" required>
-        <label for="teacher_class">Class</label>
-        <input id="teacher_class" name="class" required>
-        <label for="teacher_password">Password</label>
-        <input id="teacher_password" name="password" type="password" required>
-        <button type="submit">Create Teacher</button>
-    </form>
-    {% if teachers %}
-    <h4>Existing Teachers</h4>
-    <table>
-        <thead>
-            <tr><th>Name</th><th>Email</th><th>Class</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-            {% for t in teachers %}
-            <tr>
-                <td>{{ t.name }}</td>
-                <td>{{ t.email }}</td>
-                <td>{{ t.class }}</td>
-                <td>
-                    <form method="post" action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}" style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                        <button type="submit" class="btn-small btn-secondary">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h3>Students Management</h3>
-    <p>Students are registered via teacher dashboard.</p>
-    {% if users %}
-    <h4>Existing Students</h4>
-    <table>
-        <thead>
-            <tr><th>Name</th><th>Class</th><th>Status</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-            {% for u in users %}
-            <tr>
-                <td>{{ u.name }}</td>
-                <td>{{ u.class }}</td>
-                <td>{{ u.status }}</td>
-                <td>
-                    <form method="post" action="{{ url_for('admin.delete_student', user_id=u.id) }}" style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                        <button type="submit" class="btn-small btn-secondary">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h3>Parents Management</h3>
-    <form method="post" action="{{ url_for('admin.create_parent') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <label for="parent_name">Name</label>
-        <input id="parent_name" name="name" required>
-        <label for="parent_username">Username</label>
-        <input id="parent_username" name="username" required>
-        <label for="parent_email">Email</label>
-        <input id="parent_email" name="email" type="email" required>
-        <label for="parent_phone">Phone</label>
-        <input id="parent_phone" name="phone">
-        <label for="parent_password">Password</label>
-        <input id="parent_password" name="password" type="password" required>
-        <button type="submit">Create Parent</button>
-    </form>
-    {% if parents %}
-    <h4>Existing Parents</h4>
-    <table>
-        <thead>
-            <tr><th>Name</th><th>Email</th><th>Phone</th></tr>
-        </thead>
-        <tbody>
-            {% for p in parents %}
-            <tr>
-                <td>{{ p.name }}</td>
-                <td>{{ p.email }}</td>
-                <td>{{ p.phone or '-' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h3>Student-Parent Links</h3>
-    <form method="post" action="{{ url_for('admin.link_student_parent') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <label for="link_student">Student</label>
-        <select id="link_student" name="student_id" required>
-            <option value="">-- Select Student --</option>
-            {% for u in users %}
-            <option value="{{ u.id }}">{{ u.name }}</option>
-            {% endfor %}
-        </select>
-        <label for="link_parent">Parent</label>
-        <select id="link_parent" name="parent_id" required>
-            <option value="">-- Select Parent --</option>
-            {% for p in parents %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-            {% endfor %}
-        </select>
-        <label for="relationship">Relationship</label>
-        <input id="relationship" name="relationship" placeholder="e.g. Parent" required>
-        <button type="submit">Link</button>
-    </form>
-    {% if student_parent_links %}
-    <h4>Existing Links</h4>
-    <table>
-        <thead>
-            <tr><th>Student</th><th>Parent</th><th>Relationship</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-            {% for link in student_parent_links %}
-            <tr>
-                <td>{{ link.student_name }}</td>
-                <td>{{ link.parent_name }}</td>
-                <td>{{ link.relationship }}</td>
-                <td>
-                    <form method="post" action="{{ url_for('admin.unlink_student_parent', link_id=link.id) }}" style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                        <button type="submit" class="btn-small btn-secondary">Unlink</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h3>Subject Management</h3>
-    <form method="post" action="{{ url_for('admin.manage_subjects') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <label for="subject_name">New Subject</label>
-        <input id="subject_name" name="name" placeholder="e.g. Mathematics" required>
-        <button type="submit">Add Subject</button>
-    </form>
-    {% if subjects %}
-    <h4>Existing Subjects</h4>
-    <ul>
-        {% for s in subjects %}
-        <li>
-            {{ s.name }}
-            <form method="post" action="{{ url_for('admin.manage_subjects') }}" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="subject_id" value="{{ s.id }}">
-                <button type="submit" class="btn-small btn-secondary">Delete</button>
-            </form>
-        </li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-</div>
-
-<div class="card">
-    <h3>Assign Subject for Auditing</h3>
-    <form method="post" action="{{ url_for('admin.assign_subject') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <label for="audit_student_id">Student</label>
-        <select id="audit_student_id" name="student_id" required>
-            <option value="">-- Select Student --</option>
-            {% for u in users %}
-            <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
-            {% endfor %}
-        </select>
-        <label for="audit_subject_id">Subject</label>
-        <select id="audit_subject_id" name="subject_id" required>
-            <option value="">-- Select Subject --</option>
-            {% for s in subjects %}
-            <option value="{{ s.id }}">{{ s.name }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit">Assign Subject</button>
-    </form>
-</div>
-
-<div class="card">
-    <h3>Student Auditing Progress</h3>
-    <div class="table-responsive">
+<div id="Teachers" class="tab-content">
+    <div class="card">
+        <h3>Teachers Management</h3>
+        <form method="post" action="{{ url_for('admin.create_teacher') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <label for="teacher_name">Name</label>
+            <input id="teacher_name" name="name" required>
+            <label for="teacher_username">Username</label>
+            <input id="teacher_username" name="username" required>
+            <label for="teacher_email">Email</label>
+            <input id="teacher_email" name="email" type="email" required>
+            <label for="teacher_class">Class</label>
+            <input id="teacher_class" name="class" required>
+            <label for="teacher_password">Password</label>
+            <input id="teacher_password" name="password" type="password" required>
+            <button type="submit">Create Teacher</button>
+        </form>
+        {% if teachers %}
+        <h4>Existing Teachers</h4>
         <table>
             <thead>
-                <tr>
-                    <th>Student</th>
-                    <th>Subject</th>
-                    <th>Status</th>
-                    <th>Notes</th>
-                </tr>
+                <tr><th>Name</th><th>Email</th><th>Class</th><th>Actions</th></tr>
             </thead>
             <tbody>
-                {% if audit_links %}
-                {% for audit in audit_links %}
+                {% for t in teachers %}
                 <tr>
-                    <td>{{ audit.student_name }}</td>
-                    <td>{{ audit.subject_name }}</td>
+                    <td>{{ t.name }}</td>
+                    <td>{{ t.email }}</td>
+                    <td>{{ t.class }}</td>
                     <td>
-                        {% if audit.status == 'Cleared' %}
-                            <span style="color: green;">✓ Cleared</span>
-                        {% elif audit.status == 'Not Cleared' %}
-                            <span style="color: red;">✗ Not Cleared</span>
-                        {% else %}
-                            <span style="color: orange;">⚠ Pending</span>
-                        {% endif %}
+                        <form method="post" action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btn-small btn-secondary">Delete</button>
+                        </form>
                     </td>
-                    <td>{{ audit.notes or '-' }}</td>
                 </tr>
                 {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="4" style="text-align: center;">No subjects assigned for auditing yet.</td>
-                </tr>
-                {% endif %}
             </tbody>
         </table>
+        {% endif %}
     </div>
 </div>
 
-<div class="card">
-    <h3>Settings</h3>
-    <form method="post" action="{{ url_for('admin.save_settings') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <label for="send_days">Send Days</label>
-        <input id="send_days" name="send_days" value="{{ send_days|join(',') }}" placeholder="e.g. 1,2,3,4,5">
-        <button type="submit">Save Settings</button>
-    </form>
-    <form method="post" action="{{ url_for('admin.toggle_fingerprint_listener') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <p>Fingerprint Listener: {{ 'Enabled' if listener_enabled else 'Disabled' }}</p>
-        <button type="submit">{{ 'Disable' if listener_enabled else 'Enable' }}</button>
-    </form>
+<div id="Students" class="tab-content">
+    <div class="card">
+        <h3>Students Management</h3>
+        <p>Students are registered via teacher dashboard.</p>
+        {% if users %}
+        <h4>Existing Students</h4>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Class</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.name }}</td>
+                    <td>{{ u.class }}</td>
+                    <td>{{ u.status }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.delete_student', user_id=u.id) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btn-small btn-secondary">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
 </div>
 
-<div class="card">
-    <h3>Reports</h3>
-    <form method="post" action="{{ url_for('admin.send_reports') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button type="submit">Send Reports</button>
-    </form>
+<div id="Parents" class="tab-content">
+    <div class="card">
+        <h3>Parents Management</h3>
+        <form method="post" action="{{ url_for('admin.create_parent') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <label for="parent_name">Name</label>
+            <input id="parent_name" name="name" required>
+            <label for="parent_username">Username</label>
+            <input id="parent_username" name="username" required>
+            <label for="parent_email">Email</label>
+            <input id="parent_email" name="email" type="email" required>
+            <label for="parent_phone">Phone</label>
+            <input id="parent_phone" name="phone">
+            <label for="parent_password">Password</label>
+            <input id="parent_password" name="password" type="password" required>
+            <button type="submit">Create Parent</button>
+        </form>
+        {% if parents %}
+        <h4>Existing Parents</h4>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Email</th><th>Phone</th></tr>
+            </thead>
+            <tbody>
+                {% for p in parents %}
+                <tr>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.email }}</td>
+                    <td>{{ p.phone or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
 </div>
+
+<div id="Links" class="tab-content">
+    <div class="card">
+        <h3>Student-Parent Links</h3>
+        <form method="post" action="{{ url_for('admin.link_student_parent') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <label for="link_student">Student</label>
+            <select id="link_student" name="student_id" required>
+                <option value="">-- Select Student --</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.name }}</option>
+                {% endfor %}
+            </select>
+            <label for="link_parent">Parent</label>
+            <select id="link_parent" name="parent_id" required>
+                <option value="">-- Select Parent --</option>
+                {% for p in parents %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+            <label for="relationship">Relationship</label>
+            <input id="relationship" name="relationship" placeholder="e.g. Parent" required>
+            <button type="submit">Link</button>
+        </form>
+        {% if student_parent_links %}
+        <h4>Existing Links</h4>
+        <table>
+            <thead>
+                <tr><th>Student</th><th>Parent</th><th>Relationship</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for link in student_parent_links %}
+                <tr>
+                    <td>{{ link.student_name }}</td>
+                    <td>{{ link.parent_name }}</td>
+                    <td>{{ link.relationship }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.unlink_student_parent', link_id=link.id) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btn-small btn-secondary">Unlink</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+
+<div id="Subjects" class="tab-content">
+    <div class="card">
+        <h3>Subject Management</h3>
+        <form method="post" action="{{ url_for('admin.manage_subjects') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <label for="subject_name">New Subject</label>
+            <input id="subject_name" name="name" placeholder="e.g. Mathematics" required>
+            <button type="submit">Add Subject</button>
+        </form>
+        {% if subjects %}
+        <h4>Existing Subjects</h4>
+        <ul>
+            {% for s in subjects %}
+            <li>
+                {{ s.name }}
+                <form method="post" action="{{ url_for('admin.manage_subjects') }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="subject_id" value="{{ s.id }}">
+                    <button type="submit" class="btn-small btn-secondary">Delete</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+
+<div id="Auditing" class="tab-content">
+    <div class="card">
+        <h3>Assign Subject for Auditing</h3>
+        <form method="post" action="{{ url_for('admin.assign_subject') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <label for="audit_student_id">Student</label>
+            <select id="audit_student_id" name="student_id" required>
+                <option value="">-- Select Student --</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
+                {% endfor %}
+            </select>
+            <label for="audit_subject_id">Subject</label>
+            <select id="audit_subject_id" name="subject_id" required>
+                <option value="">-- Select Subject --</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Assign Subject</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Student Auditing Progress</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if audit_links %}
+                    {% for audit in audit_links %}
+                    <tr>
+                        <td>{{ audit.student_name }}</td>
+                        <td>{{ audit.subject_name }}</td>
+                        <td>
+                            {% if audit.status == 'Cleared' %}
+                                <span style="color: green;">✓ Cleared</span>
+                            {% elif audit.status == 'Not Cleared' %}
+                                <span style="color: red;">✗ Not Cleared</span>
+                            {% else %}
+                                <span style="color: orange;">⚠ Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ audit.notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center;">No subjects assigned for auditing yet.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="Settings" class="tab-content">
+    <div class="card">
+        <h3>Settings</h3>
+        <form method="post" action="{{ url_for('admin.save_settings') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <label for="send_days">Send Days</label>
+            <input id="send_days" name="send_days" value="{{ send_days|join(',') }}" placeholder="e.g. 1,2,3,4,5">
+            <button type="submit">Save Settings</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.toggle_fingerprint_listener') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <p>Fingerprint Listener: {{ 'Enabled' if listener_enabled else 'Disabled' }}</p>
+            <button type="submit">{{ 'Disable' if listener_enabled else 'Enable' }}</button>
+        </form>
+    </div>
+</div>
+
+<div id="Reports" class="tab-content">
+    <div class="card">
+        <h3>Reports</h3>
+        <form method="post" action="{{ url_for('admin.send_reports') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit">Send Reports</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openTab(evt, tabName) {
+    var i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tab-content");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+    tablinks = document.getElementsByClassName("tab-link");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+}
+</script>
+
+<style>
+.admin-nav {
+    display: flex;
+    overflow-x: auto;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab-link {
+    background-color: var(--off-white);
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1em;
+    border-radius: 5px 5px 0 0;
+    margin-right: 5px;
+}
+
+.tab-link.active {
+    background-color: var(--brown-light);
+    color: var(--brown-dark);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+</style>
 
 {% endblock %}
