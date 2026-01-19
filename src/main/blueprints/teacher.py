@@ -150,6 +150,7 @@ def create_student():
     username = request.form.get("username")
     class_ = request.form.get("class")
     password = request.form.get("password")
+    fingerprint = request.form.get("fingerprint")  # '1' means enroll now
 
     if not name or not username or not class_ or not password:
         flash("Missing required fields", "error")
@@ -166,7 +167,23 @@ def create_student():
             (name, username, class_, password_hash)
         )
         conn.commit()
+        user_id = cursor.lastrowid
         flash(f"Student account created successfully! Username: {username}", "success")
+
+        if fingerprint == '1':
+            try:
+                from ..hardware.fingerprint import enroll_fingerprint
+                enrolled = enroll_fingerprint(user_id)
+                if enrolled:
+                    cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (enrolled, user_id))
+                    conn.commit()
+                    flash("Fingerprint enrolled and linked to student.", "success")
+                else:
+                    flash("Fingerprint enrollment not available or sensor error.", "warning")
+            except Exception as e:
+                logger.exception("Fingerprint enrollment error: %s", e)
+                flash("Fingerprint enrollment failed: {}".format(e), "error")
+
         return redirect(url_for("teacher.teacher_dashboard"))
     except mysql.connector.Error as e:
         logger.exception("MySQL Error creating student: %s", e)
