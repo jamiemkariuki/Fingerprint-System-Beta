@@ -37,13 +37,13 @@ body {
 }
 
 /* Header and Navigation */
-header {
+.header {
     background: var(--brown-dark);
     padding: 15px 0;
     box-shadow: 0 2px 5px var(--shadow-color);
 }
 
-nav {
+.nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -52,7 +52,7 @@ nav {
     padding: 0 20px;
 }
 
-nav .brand {
+.brand {
     font-size: 1.8em;
     font-weight: 700;
     color: var(--text-light);
@@ -60,7 +60,7 @@ nav .brand {
     letter-spacing: 0.5px;
 }
 
-nav ul {
+.nav-links {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -68,11 +68,11 @@ nav ul {
     align-items: center;
 }
 
-nav ul li {
+.nav-links li {
     margin-left: 25px;
 }
 
-nav ul li a {
+.nav-links a {
     text-decoration: none;
     color: var(--brown-light);
     font-weight: 600;
@@ -81,7 +81,7 @@ nav ul li a {
     position: relative;
 }
 
-nav ul li a::after {
+.nav-links a::after {
     content: '';
     position: absolute;
     width: 0%;
@@ -92,11 +92,11 @@ nav ul li a::after {
     transition: width 0.3s ease-out;
 }
 
-nav ul li a:hover::after, nav ul li a.active::after {
+.nav-links a:hover::after, .nav-links a.active::after {
     width: 100%;
 }
 
-nav ul li a:hover {
+.nav-links a:hover {
     color: var(--white);
     transform: translateY(-2px);
 }
@@ -130,6 +130,11 @@ nav ul li a:hover {
 .btn-secondary:hover {
     background-color: var(--brown-medium);
     color: var(--text-light);
+}
+
+.btn-small {
+    padding: 8px 15px;
+    font-size: 0.9em;
 }
 
 /* Cards */
@@ -258,23 +263,36 @@ table tbody tr:hover {
     gap: 25px;
 }
 
+/* Main and Footer */
+.main {
+    min-height: calc(100vh - 140px); /* Adjust for header and footer */
+    padding: 20px;
+}
+
+.footer {
+    background: var(--brown-dark);
+    color: var(--text-light);
+    text-align: center;
+    padding: 10px 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     body {
         font-size: 0.95rem;
     }
 
-    nav {
+    .nav {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    nav ul {
+    .nav-links {
         margin-top: 15px;
         flex-wrap: wrap;
     }
 
-    nav ul li {
+    .nav-links li {
         margin-left: 0;
         margin-right: 15px;
         margin-bottom: 10px;
@@ -311,7 +329,7 @@ table tbody tr:hover {
 }
 
 @media (max-width: 480px) {
-    nav .brand {
+    .brand {
         font-size: 1.5em;
     }
 

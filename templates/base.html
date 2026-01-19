@@ -7,48 +7,47 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
   <body>
-    <div class="layout">
-      <aside class="sidebar" aria-label="Admin navigation">
-        <div class="brand">Fingerprint System</div>
-        <nav class="sidebar-nav">
-          <ul>
-            {% if session.get('admin_id') %}
-              <li><a href="{{ url_for('admin.admin_dashboard') }}">Admin Dashboard</a></li>
-              <li><a href="{{ url_for('admin.admin_logout') }}">Logout</a></li>
-            {% elif session.get('teacher_id') %}
-              <li><a href="{{ url_for('teacher.teacher_dashboard') }}">Teacher Dashboard</a></li>
-              <li><a href="{{ url_for('teacher.teacher_logout') }}">Logout</a></li>
-            {% elif session.get('student_id') %}
-              <li><a href="{{ url_for('student.student_dashboard') }}">Student Dashboard</a></li>
-              <li><a href="{{ url_for('student.student_logout') }}">Logout</a></li>
-            {% elif session.get('parent_id') %}
-              <li><a href="{{ url_for('parent.parent_dashboard') }}">Parent Dashboard</a></li>
-              <li><a href="{{ url_for('parent.parent_logout') }}">Logout</a></li>
-            {% else %}
-              <li><a href="{{ url_for('main.home') }}">Home</a></li>
-              <li><a href="{{ url_for('teacher.teacher_login') }}">Teacher Login</a></li>
-              <li><a href="{{ url_for('admin.admin_login') }}">Admin Login</a></li>
-              <li><a href="{{ url_for('student.student_login') }}">Student Login</a></li>
-            {% endif %}
-          </ul>
-        </nav>
-      </aside>
-
-      <main class="content" role="main">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
+    <header class="header">
+      <nav class="nav">
+        <a href="{{ url_for('main.home') }}" class="brand">Fingerprint System</a>
+        <ul class="nav-links">
+          {% if session.get('admin_id') %}
+            <li><a href="{{ url_for('admin.admin_dashboard') }}">Admin Dashboard</a></li>
+            <li><a href="{{ url_for('admin.admin_logout') }}">Logout</a></li>
+          {% elif session.get('teacher_id') %}
+            <li><a href="{{ url_for('teacher.teacher_dashboard') }}">Teacher Dashboard</a></li>
+            <li><a href="{{ url_for('teacher.teacher_logout') }}">Logout</a></li>
+          {% elif session.get('student_id') %}
+            <li><a href="{{ url_for('student.student_dashboard') }}">Student Dashboard</a></li>
+            <li><a href="{{ url_for('student.student_logout') }}">Logout</a></li>
+          {% elif session.get('parent_id') %}
+            <li><a href="{{ url_for('parent.parent_dashboard') }}">Parent Dashboard</a></li>
+            <li><a href="{{ url_for('parent.parent_logout') }}">Logout</a></li>
+          {% else %}
+            <li><a href="{{ url_for('main.home') }}">Home</a></li>
+            <li><a href="{{ url_for('teacher.teacher_login') }}">Teacher Login</a></li>
+            <li><a href="{{ url_for('admin.admin_login') }}">Admin Login</a></li>
+            <li><a href="{{ url_for('parent.parent_login') }}">Parent Login</a></li>
+            <li><a href="{{ url_for('student.student_login') }}">Student Login</a></li>
           {% endif %}
-        {% endwith %}
+        </ul>
+      </nav>
+    </header>
 
-        {% block content %}{% endblock %}
-      </main>
-    </div>
+    <main class="main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
 
-    <footer class="footer container text-center mt-20">
-      <small>&copy; 2026 Fingerprint System</small>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <p>&copy; 2026 Fingerprint System</p>
     </footer>
   </body>
 </html>
