@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Student Dashboard</h2>
+    <a href="{{ url_for('student.student_logout') }}" class="btn btn-secondary">Logout</a>
+</div>
+
+<div class="card">
+    <h3>Welcome, {{ student.name }}</h3>
+    <p><strong>Class:</strong> {{ student.class }}</p>
+    <p><strong>Today's Status:</strong>
+        {% if status == 'Present' %}
+        <span class="status-present">Present</span>
+        {% else %}
+        <span class="status-absent">Absent</span>
+        {% endif %}
+    </p>
+</div>
+
+<div class="card">
+    <h3>Subject Clearance (Auditing)</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                    <th>Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if audit_records %}
+                {% for record in audit_records %}
+                <tr>
+                    <td>{{ record.subject_name }}</td>
+                    <td>
+                        {% if record.status == 'Cleared' %}
+                        <span style="color: green;">✓ Cleared</span>
+                        {% elif record.status == 'Not Cleared' %}
+                        <span style="color: red;">✗ Not Cleared</span>
+                        {% else %}
+                        <span style="color: orange;">⚠ Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ record.notes or '-' }}
+                        <form method="post" action="{{ url_for('student.audit_note', audit_id=record.id) }}" style="margin-top:4px;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <input type="text" name="note" placeholder="Add note" style="width: 140px;">
+                            <button type="submit" class="btn btn-small" style="margin-left:6px;">Add</button>
+                        </form>
+                    </td>
+                    <td>{{ record.updated_at.strftime('%Y-%m-%d %H:%M') if record.updated_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center;">No subjects assigned for auditing yet.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Recent Attendance History</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if history %}
+                {% for day in history %}
+                <tr>
+                    <td>{{ day.date }}</td>
+                    <td><span class="status-present">Present</span></td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="2" style="text-align: center;">No recent logs found.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

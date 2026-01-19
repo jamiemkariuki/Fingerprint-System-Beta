@@ -31,10 +31,13 @@ CREATE TABLE IF NOT EXISTS `Teachers` (
 CREATE TABLE IF NOT EXISTS `Users` (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(128) NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(255) NULL,
   class VARCHAR(64) NOT NULL,
   fingerprint_id INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
+  UNIQUE KEY uniq_user_username (username),
   KEY idx_users_class (class),
   UNIQUE KEY uniq_user_fingerprint_id (fingerprint_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -74,6 +77,29 @@ CREATE TABLE IF NOT EXISTS `StudentParents` (
   FOREIGN KEY (student_id) REFERENCES `Users`(id) ON DELETE CASCADE,
   FOREIGN KEY (parent_id) REFERENCES `Parents`(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_student_parent (student_id, parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Subjects Table
+CREATE TABLE IF NOT EXISTS `Subjects` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(128) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_subject_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Student Audit Table (Subject Clearance)
+CREATE TABLE IF NOT EXISTS `StudentAudit` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  student_id INT UNSIGNED NOT NULL,
+  subject_id INT UNSIGNED NOT NULL,
+  status ENUM('Pending', 'Cleared', 'Not Cleared') DEFAULT 'Pending',
+  notes TEXT,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FOREIGN KEY (student_id) REFERENCES `Users`(id) ON DELETE CASCADE,
+  FOREIGN KEY (subject_id) REFERENCES `Subjects`(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_student_subject (student_id, subject_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Settings Table

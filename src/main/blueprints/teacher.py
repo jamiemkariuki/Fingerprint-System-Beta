@@ -53,6 +53,18 @@ def teacher_dashboard():
         """)
         student_parent_links = cursor.fetchall()
 
+        cursor.execute("SELECT * FROM Subjects ORDER BY name")
+        subjects = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT sa.id, u.name as student_name, s.name as subject_name, sa.status, sa.notes
+            FROM StudentAudit sa
+            JOIN Users u ON sa.student_id = u.id
+            JOIN Subjects s ON sa.subject_id = s.id
+            ORDER BY u.name
+        """)
+        audit_links = cursor.fetchall()
+
         return render_template(
             "teacher_dashboard.html",
             users=users,
@@ -60,7 +72,9 @@ def teacher_dashboard():
             selected_class=selected_class,
             teacher_info=teacher_info,
             parents=parents,
-            student_parent_links=student_parent_links
+            student_parent_links=student_parent_links,
+            subjects=subjects,
+            audit_links=audit_links
         )
 
     except mysql.connector.Error as e:
@@ -80,19 +94,26 @@ def register_user():
         return render_template("register.html")
 
     name = request.form.get("name")
+    username = request.form.get("username")
+    password = request.form.get("password")
     class_name = request.form.get("class")
     enroll_fp = request.form.get("enroll_fingerprint") == "yes"
 
-    if not name or not class_name:
-        flash("Missing name or class", "error")
+    if not name or not class_name or not username:
+        flash("Missing required fields", "error")
         return redirect(url_for("teacher.register_user"))
+
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode() if password else None
 
     conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
 
-        cursor.execute("INSERT INTO Users (name, class) VALUES (%s, %s)", (name, class_name))
+        cursor.execute(
+            "INSERT INTO Users (name, username, password_hash, class) VALUES (%s, %s, %s, %s)", 
+            (name, username, password_hash, class_name)
+        )
         conn.commit()
 
         user_id = cursor.lastrowid
@@ -131,19 +152,26 @@ def register_user():
 def register_student():
     if request.method == "POST":
         name = request.form.get("name")
+        username = request.form.get("username")
+        password = request.form.get("password")
         student_class = request.form.get("class")
         enroll_fp = request.form.get("enroll_fingerprint") == "yes"
 
-        if not name or not student_class:
-            flash("Missing name or class", "error")
+        if not name or not student_class or not username:
+            flash("Missing required fields", "error")
             return redirect(url_for("teacher.register_student"))
+
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode() if password else None
 
         conn = None
         try:
             conn = get_db()
             cursor = conn.cursor()
 
-            cursor.execute("INSERT INTO Users (name, class) VALUES (%s, %s)", (name, student_class))
+            cursor.execute(
+                "INSERT INTO Users (name, username, password_hash, class) VALUES (%s, %s, %s, %s)", 
+                (name, username, password_hash, student_class)
+            )
             conn.commit()
 
             user_id = cursor.lastrowid
@@ -413,3 +441,35 @@ def link_student_parent():
     finally:
         if conn:
             conn.close()
+
+@teacher_bp.route('/update_audit_status', methods=['POST'])
+def update_audit_status():
+    if "admin_id" not in session and "teacher_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+    
+    audit_id = request.form.get("audit_id")
+    status = request.form.get("status")
+    notes = request.form.get("notes", "")
+
+    if not audit_id or not status:
+        flash("Invalid data submitted.", "error")
+        return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE StudentAudit SET status = %s, notes = %s WHERE id = %s",
+            (status, notes, audit_id)
+        )
+        conn.commit()
+        flash("Audit status updated successfully.", "success")
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error updating audit status: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+    
+    return redirect(request.referrer or url_for("teacher.teacher_dashboard"))

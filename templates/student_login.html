@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 40px auto;">
+    <h2 class="text-center">Student Login</h2>
+    <form method="post" action="{{ url_for('student.student_login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <label for="username">Username</label>
+        <input id="username" name="username" required autofocus>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required>
+
+        <button type="submit" style="width: 100%; margin-top: 20px;">Login</button>
+    </form>
+    <p class="text-center mt-20">
+        <a href="{{ url_for('main.home') }}">Back to home</a>
+    </p>
+</div>
+{% endblock %}
