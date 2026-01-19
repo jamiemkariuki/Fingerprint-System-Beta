@@ -3,6 +3,8 @@ services:
     image: mariadb:10.11
     platform: linux/arm64
     container_name: fingerprint-db
+    security_opt:
+      - seccomp:unconfined
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_DATABASE=fpsnsdb
