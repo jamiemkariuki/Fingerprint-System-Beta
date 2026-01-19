@@ -12,32 +12,25 @@ from .blueprints.teacher import teacher_bp
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    # Compute repo root (two levels up from this file)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
-    
-    # Fallback to /app if we are in Docker and the root seems wrong
-    if not os.path.exists(os.path.join(project_root, 'templates')) and os.path.exists('/app/templates'):
-        project_root = '/app'
-
-    print(f"DEBUG: Initializing Flask with root_path: {project_root}", flush=True)
-    print(f"DEBUG: Templates directory: {os.path.join(project_root, 'templates')}", flush=True)
-    print(f"DEBUG: Templates exist: {os.path.exists(os.path.join(project_root, 'templates'))}", flush=True)
+    # Determine template and static folder paths
+    # In Docker, use absolute paths. Otherwise, calculate relative to this file.
+    if os.path.exists('/app/templates') and os.path.exists('/app/static'):
+        # Running in Docker container
+        template_folder = '/app/templates'
+        static_folder = '/app/static'
+    else:
+        # Running locally - calculate from file location
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
+        template_folder = os.path.join(project_root, 'templates')
+        static_folder = os.path.join(project_root, 'static')
 
     app = Flask(
         __name__,
-        root_path=project_root,
-        template_folder='templates',
-        static_folder='static'
+        template_folder=template_folder,
+        static_folder=static_folder
     )
     app.config.from_object(config_class)
-
-    # Secondary check after initialization
-    print(f"DEBUG: Flask template_folder: {app.template_folder}", flush=True)
-    if os.path.exists(app.template_folder):
-        print(f"DEBUG: Found templates: {os.listdir(app.template_folder)}", flush=True)
-    else:
-        print(f"DEBUG: ERROR - Template folder NOT FOUND at {app.template_folder}", flush=True)
 
     # Initialize extensions
     csrf.init_app(app)
