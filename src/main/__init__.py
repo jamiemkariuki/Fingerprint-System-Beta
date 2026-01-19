@@ -12,22 +12,31 @@ from .blueprints.teacher import teacher_bp
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    # Compute repo root (two levels up from this file: src/main/__init__.py -> src -> root)
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    # Compute repo root (two levels up from this file)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
     
+    # Fallback for Docker environment if paths look wrong
+    if not os.path.exists(os.path.join(project_root, 'templates')):
+        if os.path.exists('/app/templates'):
+            project_root = '/app'
+
     template_dir = os.path.join(project_root, 'templates')
     static_dir = os.path.join(project_root, 'static')
     
-    print(f"DEBUG: project_root: {project_root}")
-    print(f"DEBUG: template_dir: {template_dir}")
-    print(f"DEBUG: template_dir exists: {os.path.exists(template_dir)}")
-
     app = Flask(
         __name__,
         template_folder=template_dir,
         static_folder=static_dir
     )
     app.config.from_object(config_class)
+
+    # Debug logging that will show up in gunicorn
+    app.logger.error(f"DEBUG: project_root calculated as: {project_root}")
+    app.logger.error(f"DEBUG: template_dir set to: {app.template_folder}")
+    app.logger.error(f"DEBUG: template_dir exists: {os.path.exists(app.template_folder)}")
+    if os.path.exists(app.template_folder):
+        app.logger.error(f"DEBUG: templates found: {os.listdir(app.template_folder)}")
 
     # Initialize extensions
     csrf.init_app(app)
