@@ -2,18 +2,18 @@
 {% block content %}
 
 <div class="admin-nav">
-    <a href="#Overview" class="nav-link">Overview</a>
-    <a href="#Teachers" class="nav-link">Teachers</a>
-    <a href="#Students" class="nav-link">Students</a>
-    <a href="#Parents" class="nav-link">Parents</a>
-    <a href="#Links" class="nav-link">Links</a>
-    <a href="#Subjects" class="nav-link">Subjects</a>
-    <a href="#Auditing" class="nav-link">Auditing</a>
-    <a href="#Settings" class="nav-link">Settings</a>
-    <a href="#Reports" class="nav-link">Reports</a>
+    <button class="tab-link active" onclick="openTab(event, 'Overview')">Overview</button>
+    <button class="tab-link" onclick="openTab(event, 'Teachers')">Teachers</button>
+    <button class="tab-link" onclick="openTab(event, 'Students')">Students</button>
+    <button class="tab-link" onclick="openTab(event, 'Parents')">Parents</button>
+    <button class="tab-link" onclick="openTab(event, 'Links')">Links</button>
+    <button class="tab-link" onclick="openTab(event, 'Subjects')">Subjects</button>
+    <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing</button>
+    <button class="tab-link" onclick="openTab(event, 'Settings')">Settings</button>
+    <button class="tab-link" onclick="openTab(event, 'Reports')">Reports</button>
 </div>
 
-<div id="Overview" class="section">
+<div id="Overview" class="tab-content active">
     <div class="card">
         <h3>Overview</h3>
         <div class="grid">
@@ -41,7 +41,7 @@
     </div>
 </div>
 
-<div id="Teachers" class="section">
+<div id="Teachers" class="tab-content">
     <div class="card">
         <h3>Teachers Management</h3>
         <form method="post" action="{{ url_for('admin.create_teacher') }}">
@@ -84,7 +84,7 @@
     </div>
 </div>
 
-<div id="Students" class="section">
+<div id="Students" class="tab-content">
     <div class="card">
         <h3>Students Management</h3>
         <p>Students are registered via teacher dashboard.</p>
@@ -114,7 +114,7 @@
     </div>
 </div>
 
-<div id="Parents" class="section">
+<div id="Parents" class="tab-content">
     <div class="card">
         <h3>Parents Management</h3>
         <form method="post" action="{{ url_for('admin.create_parent') }}">
@@ -151,7 +151,7 @@
     </div>
 </div>
 
-<div id="Links" class="section">
+<div id="Links" class="tab-content">
     <div class="card">
         <h3>Student-Parent Links</h3>
         <form method="post" action="{{ url_for('admin.link_student_parent') }}">
@@ -200,7 +200,7 @@
     </div>
 </div>
 
-<div id="Subjects" class="section">
+<div id="Subjects" class="tab-content">
     <div class="card">
         <h3>Subject Management</h3>
         <form method="post" action="{{ url_for('admin.manage_subjects') }}">
@@ -228,7 +228,7 @@
     </div>
 </div>
 
-<div id="Auditing" class="section">
+<div id="Auditing" class="tab-content">
     <div class="card">
         <h3>Assign Subject for Auditing</h3>
         <form method="post" action="{{ url_for('admin.assign_subject') }}">
@@ -292,7 +292,7 @@
     </div>
 </div>
 
-<div id="Settings" class="section">
+<div id="Settings" class="tab-content">
     <div class="card">
         <h3>Settings</h3>
         <form method="post" action="{{ url_for('admin.save_settings') }}">
@@ -309,7 +309,7 @@
     </div>
 </div>
 
-<div id="Reports" class="section">
+<div id="Reports" class="tab-content">
     <div class="card">
         <h3>Reports</h3>
         <form method="post" action="{{ url_for('admin.send_reports') }}">
@@ -322,33 +322,71 @@
 <style>
 .admin-nav {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    overflow-x: auto;
     margin-bottom: 20px;
-    padding: 10px;
+    border-bottom: 2px solid var(--border-color);
     background-color: var(--off-white);
-    border-bottom: 1px solid var(--border-color);
+    padding: 0 10px;
 }
 
-.nav-link {
-    text-decoration: none;
-    color: var(--primary);
+.tab-link {
+    background-color: #f8f9fa;
+    border: 1px solid var(--border-color);
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 1em;
     font-weight: 600;
-    padding: 8px 12px;
-    border: 1px solid var(--primary);
-    border-radius: 4px;
-    transition: background-color 0.3s;
+    border-radius: 5px 5px 0 0;
+    margin-right: 5px;
+    color: var(--text-dark);
+    transition: background-color 0.3s, color 0.3s;
 }
 
-.nav-link:hover {
+.tab-link:hover {
+    background-color: #e9ecef;
+}
+
+.tab-link.active {
     background-color: var(--primary);
     color: white;
+    border-bottom-color: var(--primary);
 }
 
-.section {
-    margin-bottom: 40px;
-    scroll-margin-top: 100px; /* For smooth scrolling */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initially hide all except active
+    var tabcontent = document.getElementsByClassName("tab-content");
+    for (var i = 0; i < tabcontent.length; i++) {
+        if (!tabcontent[i].classList.contains('active')) {
+            tabcontent[i].style.display = "none";
+        }
+    }
+});
+
+function openTab(evt, tabName) {
+    // Hide all tab content
+    var tabcontent = document.getElementsByClassName("tab-content");
+    for (var i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+    // Remove active class from all tab links
+    var tablinks = document.getElementsByClassName("tab-link");
+    for (var i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+    // Show the selected tab content and add active class
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+}
+</script>
 
 {% endblock %}
