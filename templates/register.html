@@ -3,12 +3,17 @@
 <div class="card" style="max-width: 480px; margin: auto;">
     <h2>Register Student</h2>
     <form method="post" action="{{ url_for('teacher.register_student') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <label for="name">Full Name</label>
         <input id="name" name="name" required>
         <label for="class">Class</label>
         <input id="class" name="class" required>
-        <button type="submit">Register & Enroll Fingerprint</button>
+        <div style="margin: 15px 0;">
+            <input type="checkbox" id="enroll_fingerprint" name="enroll_fingerprint" value="yes" checked>
+            <label for="enroll_fingerprint" style="display: inline; margin-left: 5px;">Enroll fingerprint now (uncheck
+                to add later)</label>
+        </div>
+        <button type="submit">Register Student</button>
     </form>
 </div>
 {% endblock %}
