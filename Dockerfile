@@ -39,7 +39,14 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Explicitly copy templates and static directories first
+COPY templates /app/templates
+COPY static /app/static
+
 COPY . .
+
+# Verify templates were copied
+RUN ls -la /app/templates || echo "WARNING: templates directory not found"
 
 # Expose port 5000 for the app
 EXPOSE 5000
