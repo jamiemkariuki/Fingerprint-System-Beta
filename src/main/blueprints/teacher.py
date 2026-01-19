@@ -67,6 +67,7 @@ def register_user():
 
     name = request.form.get("name")
     class_name = request.form.get("class")
+    enroll_fp = request.form.get("enroll_fingerprint") == "yes"
 
     if not name or not class_name:
         flash("Missing name or class", "error")
@@ -82,22 +83,25 @@ def register_user():
 
         user_id = cursor.lastrowid
 
-        if lcd:
-            lcd.clear()
-            lcd.text("Place finger...", 1)
+        if enroll_fp:
+            if lcd:
+                lcd.clear()
+                lcd.text("Place finger...", 1)
 
-        fingerprint_id = enroll_fingerprint(user_id)
+            fingerprint_id = enroll_fingerprint(user_id)
 
-        if fingerprint_id is None:
-            flash("Student registered without fingerprint. You can enroll it later.", "warning")
+            if fingerprint_id is None:
+                flash("Student registered without fingerprint. You can enroll it later.", "warning")
+            else:
+                cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
+                conn.commit()
+                flash("Student registered with fingerprint successfully!", "success")
+
+            if lcd:
+                lcd.clear()
+                lcd.text(f"User: {name}", 1)
         else:
-            cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
-            conn.commit()
-            flash("Student registered with fingerprint successfully!", "success")
-
-        if lcd:
-            lcd.clear()
-            lcd.text(f"User: {name}", 1)
+            flash("Student registered without fingerprint. You can enroll it later.", "info")
 
         return redirect(url_for("teacher.teacher_dashboard"))
 
@@ -114,6 +118,7 @@ def register_student():
     if request.method == "POST":
         name = request.form.get("name")
         student_class = request.form.get("class")
+        enroll_fp = request.form.get("enroll_fingerprint") == "yes"
 
         if not name or not student_class:
             flash("Missing name or class", "error")
@@ -129,22 +134,25 @@ def register_student():
 
             user_id = cursor.lastrowid
 
-            if lcd:
-                lcd.clear()
-                lcd.text("Place finger...", 1)
+            if enroll_fp:
+                if lcd:
+                    lcd.clear()
+                    lcd.text("Place finger...", 1)
 
-            fingerprint_id = enroll_fingerprint(user_id)
+                fingerprint_id = enroll_fingerprint(user_id)
 
-            if fingerprint_id is None:
-                flash("Student registered without fingerprint. You can enroll it later.", "warning")
+                if fingerprint_id is None:
+                    flash("Student registered without fingerprint. You can enroll it later.", "warning")
+                else:
+                    cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
+                    conn.commit()
+                    flash("Student registered with fingerprint successfully!", "success")
+
+                if lcd:
+                    lcd.clear()
+                    lcd.text(f"Registered {name}", 1)
             else:
-                cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
-                conn.commit()
-                flash("Student registered with fingerprint successfully!", "success")
-
-            if lcd:
-                lcd.clear()
-                lcd.text(f"Registered {name}", 1)
+                flash("Student registered without fingerprint. You can enroll it later.", "info")
 
             return redirect(url_for("teacher.teacher_dashboard"))
 
