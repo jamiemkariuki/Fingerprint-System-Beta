@@ -47,6 +47,8 @@ Table of contents:
 - Dockerfile – container image build for the app
 - docker-compose.yml – orchestrates app and DB
 
++ Student auditing notes: Students can attach per-audit notes to their Subject Clearance records. Notes are stored on the StudentAudit.notes column with a timestamp per entry. See the updated student dashboard for the UI.
+
 ## Environment and configuration
 - The app loads environment variables via a .env file or Docker Compose environment settings.
 - Key variables (examples):
@@ -119,6 +121,9 @@ services:
 - Validate FingerprintLogs in DB after scans
 - Validate PDF generation endpoints for attendance
 - Validate the API endpoint /api/fingerprint_scans returns scans queued by the listener
+- Validate the new student auditing notes feature:
+  - Login as a student and add notes to audit records via the UI; verify notes persist with timestamps in StudentAudit.notes
+  - Test the /student/audit_note/<audit_id> endpoint with curl (requires session cookies from login)
 
 ## Troubleshooting
 - Docker logs: `docker-compose logs web` or `docker-compose logs db` for DB issues
