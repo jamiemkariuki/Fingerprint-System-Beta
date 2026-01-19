@@ -1,9 +1,12 @@
 services:
   db:
-    image: mariadb:10.11
+    image: lscr.io/linuxserver/mariadb:latest
     container_name: fingerprint-db
     environment:
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - PUID=1000
+      - PGID=1000
+      - TZ=Africa/Nairobi
+      - MYSQL_ROOT_PASSWORD=
       - MYSQL_DATABASE=fpsnsdb
       - MYSQL_USER=fp_user
       - MYSQL_PASSWORD=fp_pass
