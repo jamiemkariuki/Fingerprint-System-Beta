@@ -1,210 +1,32 @@
-{% extends 'base.html' %}
-{% block content %}
-
-<div class="admin-nav">
-    <button class="tab-link active" onclick="openTab(event, 'Overview')">Overview</button>
-    <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing</button>
-    <button class="tab-link" onclick="openTab(event, 'Students')">Students</button>
-    <button class="tab-link" onclick="openTab(event, 'Parents')">Parents</button>
-</div>
-
-<div id="Overview" class="tab-content active">
-    <div class="card">
-        <h3>Class Attendance Overview</h3>
-        <p>View attendance for your class.</p>
-        <!-- Add attendance table or summary here if available -->
-    </div>
-</div>
-
-<div id="Auditing" class="tab-content">
-    <div class="card">
-        <h3>Student Auditing Management</h3>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Subject</th>
-                        <th>Status</th>
-                        <th>Update Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if audit_links %}
-                    {% for audit in audit_links %}
-                    <tr>
-                        <td>{{ audit.student_name }}</td>
-                        <td>{{ audit.subject_name }}</td>
-                        <td>
-                            {% if audit.status == 'Cleared' %}
-                                <span style="color: green;">✓ Cleared</span>
-                            {% elif audit.status == 'Not Cleared' %}
-                                <span style="color: red;">✗ Not Cleared</span>
-                            {% else %}
-                                <span style="color: orange;">⚠ Pending</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <form method="post" action="{{ url_for('teacher.update_audit_status') }}" style="display: flex; gap: 5px;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                                <input type="hidden" name="audit_id" value="{{ audit.id }}">
-                                <select name="status" style="width: 120px; padding: 2px;">
-                                    <option value="Pending" {% if audit.status == 'Pending' %}selected{% endif %}>Pending</option>
-                                    <option value="Cleared" {% if audit.status == 'Cleared' %}selected{% endif %}>Cleared</option>
-                                    <option value="Not Cleared" {% if audit.status == 'Not Cleared' %}selected{% endif %}>Not Cleared</option>
-                                </select>
-                                <input name="notes" placeholder="Notes..." value="{{ audit.notes or '' }}" style="width: 100px; padding: 2px;">
-                                <button type="submit" class="btn btn-small">Update</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="4" style="text-align: center;">No subjects assigned for auditing yet.</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3>Assign Subject to Student</h3>
-        <form method="post" action="{{ url_for('admin.assign_subject') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <label for="t_audit_student_id">Student</label>
-            <select id="t_audit_student_id" name="student_id" required>
-                <option value="">-- Select Student --</option>
-                {% for u in users %}
-                <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
-                {% endfor %}
-            </select>
-            <label for="t_audit_subject_id">Subject</label>
-            <select id="t_audit_subject_id" name="subject_id" required>
-                <option value="">-- Select Subject --</option>
-                {% for s in subjects %}
-                <option value="{{ s.id }}">{{ s.name }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit">Assign Subject</button>
-        </form>
-    </div>
-</div>
-
-<div id="Students" class="tab-content">
     <div class="card">
         <h3>Student Management</h3>
-        <p>Enroll and manage students.</p>
-        <!-- Add student enrollment form or list here -->
-    </div>
-</div>
-
-<div id="Parents" class="tab-content">
-    <div class="card">
-        <h3>Parent Management</h3>
-        <form method="post" action="{{ url_for('teacher.create_parent') }}">
+        <form method="post" action="{{ url_for('teacher.create_student') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <label for="parent_name">Name</label>
-            <input id="parent_name" name="name" required>
-            <label for="parent_username">Username</label>
-            <input id="parent_username" name="username" required>
-            <label for="parent_email">Email</label>
-            <input id="parent_email" name="email" type="email" required>
-            <label for="parent_phone">Phone</label>
-            <input id="parent_phone" name="phone">
-            <label for="parent_password">Password</label>
-            <input id="parent_password" name="password" type="password" required>
-            <button type="submit">Create Parent</button>
+            <label for="student_name">Name</label>
+            <input id="student_name" name="name" required>
+            <label for="student_username">Username</label>
+            <input id="student_username" name="username" required>
+            <label for="student_class">Class</label>
+            <input id="student_class" name="class" required>
+            <label for="student_password">Password</label>
+            <input id="student_password" name="password" type="password" required>
+            <button type="submit">Create Student</button>
         </form>
-        <form method="post" action="{{ url_for('teacher.link_student_parent') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <label for="link_student">Student</label>
-            <select id="link_student" name="student_id" required>
-                <option value="">-- Select Student --</option>
+        {% if users %}
+        <h4>Existing Students</h4>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Class</th><th>Status</th></tr>
+            </thead>
+            <tbody>
                 {% for u in users %}
-                <option value="{{ u.id }}">{{ u.name }}</option>
+                <tr>
+                    <td>{{ u.name }}</td>
+                    <td>{{ u.class }}</td>
+                    <td>{{ u.status }}</td>
+                </tr>
                 {% endfor %}
-            </select>
-            <label for="link_parent">Parent</label>
-            <select id="link_parent" name="parent_id" required>
-                <option value="">-- Select Parent --</option>
-                {% for p in parents %}
-                <option value="{{ p.id }}">{{ p.name }}</option>
-                {% endfor %}
-            </select>
-            <label for="relationship">Relationship</label>
-            <input id="relationship" name="relationship" placeholder="e.g. Parent" required>
-            <button type="submit">Link</button>
-        </form>
+            </tbody>
+        </table>
+        {% endif %}
     </div>
-</div>
-
-<style>
-.admin-nav {
-    display: flex;
-    overflow-x: auto;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
-    background-color: var(--off-white);
-    padding: 0 10px;
-}
-
-.tab-link {
-    background-color: #f8f9fa;
-    border: 1px solid var(--border-color);
-    padding: 12px 20px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    border-radius: 5px 5px 0 0;
-    margin-right: 5px;
-    color: var(--text-dark);
-    transition: background-color 0.3s, color 0.3s;
-}
-
-.tab-link:hover {
-    background-color: #e9ecef;
-}
-
-.tab-link.active {
-    background-color: var(--primary);
-    color: white;
-    border-bottom-color: var(--primary);
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var tabcontent = document.getElementsByClassName("tab-content");
-    for (var i = 0; i < tabcontent.length; i++) {
-        if (!tabcontent[i].classList.contains('active')) {
-            tabcontent[i].style.display = "none";
-        }
-    }
-});
-
-function openTab(evt, tabName) {
-    var i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-    tablinks = document.getElementsByClassName("tab-link");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-    document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
-}
-</script>
-
-{% endblock %}
