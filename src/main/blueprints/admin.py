@@ -188,12 +188,133 @@ def create_teacher():
         if conn:
             conn.close()
 
-# New endpoints for subjects and auditing
+@admin_bp.route('/fingerprint_listener/toggle', methods=['POST'])
+def toggle_fingerprint_listener():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT `value` FROM `Settings` WHERE `key` = 'fingerprint_listener_enabled'")
+        setting = cursor.fetchone()
+
+        new_value = '0'
+        if setting is None or setting['value'] == '0':
+            new_value = '1'
+
+        cursor.execute(
+            "INSERT INTO `Settings` (`key`, `value`) VALUES ('fingerprint_listener_enabled', %s) ON DUPLICATE KEY UPDATE `value` = %s",
+            (new_value, new_value)
+        )
+        conn.commit()
+        flash(f"Fingerprint listener {'enabled' if new_value == '1' else 'disabled'}!", "success")
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error toggling listener: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("admin.admin_dashboard"))
+
+@admin_bp.route('/save_settings', methods=['POST'])
+def save_settings():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    send_days = request.form.getlist("send_days")
+    send_days_str = ",".join(send_days)
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO Settings (`key`, `value`) VALUES ('send_days', %s) ON DUPLICATE KEY UPDATE `value` = %s", (send_days_str, send_days_str))
+        conn.commit()
+        flash("Settings saved successfully!", "success")
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error saving settings: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("admin.admin_dashboard"))
+
+@admin_bp.route('/delete/student/<int:user_id>', methods=['POST'])
+def delete_student(user_id):
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT fingerprint_id FROM Users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+
+        if user and user["fingerprint_id"]:
+            fid = user["fingerprint_id"]
+            try:
+                from ..hardware.fingerprint import finger
+                if finger and finger.delete_model(fid) == 0:
+                    logger.info("Fingerprint ID %s deleted from sensor.", fid)
+            except Exception as e:
+                logger.warning("Could not delete fingerprint from sensor: %s", e)
+
+        cursor.execute("DELETE FROM Users WHERE id = %s", (user_id,))
+        conn.commit()
+        flash("Student deleted successfully!", "success")
+        return redirect(url_for("admin.admin_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error deleting student: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/delete/teacher/<int:teacher_id>', methods=['POST'])
+def delete_teacher(teacher_id):
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT fingerprint_id FROM Teachers WHERE id = %s", (teacher_id,))
+        teacher = cursor.fetchone()
+
+        if teacher and teacher["fingerprint_id"]:
+            fid = teacher["fingerprint_id"]
+            try:
+                from ..hardware.fingerprint import finger
+                if finger and finger.delete_model(fid) == 0:
+                    logger.info("Fingerprint ID %s deleted from sensor.", fid)
+            except Exception as e:
+                logger.warning("Could not delete fingerprint from sensor: %s", e)
+
+        cursor.execute("DELETE FROM Teachers WHERE id = %s", (teacher_id,))
+        conn.commit()
+        flash("Teacher deleted successfully!", "success")
+        return redirect(url_for("admin.admin_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error deleting teacher: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
 @admin_bp.route('/manage_subjects', methods=['POST'])
 def manage_subjects():
     if "admin_id" not in session:
         return redirect(url_for("admin.admin_login"))
-
+    
     name = request.form.get("name")
     action = request.form.get("action", "add")
     subject_id = request.form.get("subject_id")
@@ -221,7 +342,7 @@ def manage_subjects():
 def assign_subject():
     if "admin_id" not in session and "teacher_id" not in session:
         return redirect(url_for("admin.admin_login"))
-
+    
     student_id = request.form.get("student_id")
     subject_id = request.form.get("subject_id")
 
@@ -245,4 +366,97 @@ def assign_subject():
     finally:
         if conn:
             conn.close()
+    
     return redirect(request.referrer or url_for("admin.admin_dashboard"))
+
+@admin_bp.route('/create_parent', methods=['POST'])
+def create_parent():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    name = request.form.get("name")
+    username = request.form.get("username")
+    email = request.form.get("email")
+    phone = request.form.get("phone", "")
+    password = request.form.get("password")
+
+    if not name or not username or not email or not password:
+        flash("Missing required fields", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO Parents (name, username, email, phone, password_hash) VALUES (%s, %s, %s, %s, %s)",
+            (name, username, email, phone, password_hash)
+        )
+        conn.commit()
+        flash(f"Parent account created successfully! Username: {username}", "success")
+        return redirect(url_for("admin.admin_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error creating parent: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/link_student_parent', methods=['POST'])
+def link_student_parent():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    student_id = request.form.get("student_id")
+    parent_id = request.form.get("parent_id")
+    relationship = request.form.get("relationship", "Parent/Guardian")
+
+    if not student_id or not parent_id:
+        flash("Missing student or parent", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO StudentParents (student_id, parent_id, relationship) VALUES (%s, %s, %s)",
+            (student_id, parent_id, relationship)
+        )
+        conn.commit()
+        flash("Student linked to parent successfully!", "success")
+        return redirect(url_for("admin.admin_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error linking student to parent: %s", e)
+        if "Duplicate entry" in str(e):
+            flash("This student is already linked to this parent.", "warning")
+        else:
+            flash(f"Database error: {e}", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@admin_bp.route('/unlink_student_parent/<int:link_id>', methods=['POST'])
+def unlink_student_parent(link_id):
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM StudentParents WHERE id = %s", (link_id,))
+        conn.commit()
+        flash("Student-parent link removed successfully!", "success")
+        return redirect(url_for("admin.admin_dashboard"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error unlinking student from parent: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("admin.admin_dashboard"))
+    finally:
+        if conn:
+            conn.close()
