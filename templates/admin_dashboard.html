@@ -5,12 +5,12 @@
 <div class="card">
     <h3>Fingerprint Listener</h3>
     <form method="post" action="{{ url_for('admin.toggle_fingerprint_listener') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <button type="submit">
             {% if listener_enabled %}
-                Turn Off
+            Turn Off
             {% else %}
-                Turn On
+            Turn On
             {% endif %}
         </button>
     </form>
@@ -19,7 +19,7 @@
 <div class="card">
     <h3>Actions</h3>
     <form method="post" action="{{ url_for('admin.send_reports') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <button type="submit">Send Daily Reports</button>
     </form>
 </div>
@@ -27,7 +27,7 @@
 <div class="card">
     <h3>Email Settings</h3>
     <form method="post" action="{{ url_for('admin.save_settings') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <p>Select the days of the week to send automated attendance reports:</p>
         <div>
             <input type="checkbox" id="monday" name="send_days" value="1" {% if '1' in send_days %}checked{% endif %}>
@@ -38,7 +38,8 @@
             <label for="tuesday">Tuesday</label>
         </div>
         <div>
-            <input type="checkbox" id="wednesday" name="send_days" value="3" {% if '3' in send_days %}checked{% endif %}>
+            <input type="checkbox" id="wednesday" name="send_days" value="3" {% if '3' in send_days %}checked{% endif
+                %}>
             <label for="wednesday">Wednesday</label>
         </div>
         <div>
@@ -64,7 +65,7 @@
 <div class="card">
     <h3>Create Teacher</h3>
     <form method="post" action="{{ url_for('admin.create_teacher') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <label for="name">Name</label>
         <input id="name" name="name" required>
         <label for="username">Username</label>
@@ -95,19 +96,20 @@
             </thead>
             <tbody>
                 {% for t in teachers %}
-                    <tr>
-                        <td>{{ t.id }}</td>
-                        <td>{{ t.name }}</td>
-                        <td>{{ t.username }}</td>
-                        <td>{{ t.email }}</td>
-                        <td>{{ t.class }}</td>
-                        <td>
-                            <form method="post" action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}" onsubmit="return confirm('Delete teacher?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <button type="submit" class="btn-secondary">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.name }}</td>
+                    <td>{{ t.username }}</td>
+                    <td>{{ t.email }}</td>
+                    <td>{{ t.class }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}"
+                            onsubmit="return confirm('Delete teacher?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btn-secondary">Delete</button>
+                        </form>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -123,33 +125,50 @@
                     <th>ID</th>
                     <th>Name</th>
                     <th>Class</th>
-                    <th>Fingerprint ID</th>
+                    <th>Fingerprint</th>
                     <th>Status (Today)</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in users %}
-                    <tr>
-                        <td>{{ u.id }}</td>
-                        <td>{{ u.name }}</td>
-                        <td>{{ u.class }}</td>
-                        <td>{{ u.fingerprint_id or '-' }}</td>
-                        <td>
-                            {% if u.status == 'Present' %}
-                                <span class="status-present">Present</span>
-                            {% else %}
-                                <span class="status-absent">Absent</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <form method="post" action="{{ url_for('admin.delete_student', user_id=u.id) }}" onsubmit="return confirm('Delete student?');" style="display: inline;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <button type="submit" class="btn-secondary">Delete</button>
-                            </form>
-                            <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn" target="_blank" style="margin-left: 5px;">PDF Report</a>
-                        </td>
-                    </tr>
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.name }}</td>
+                    <td>{{ u.class }}</td>
+                    <td>
+                        {% if u.fingerprint_id %}
+                        <span style="color: green;">✓ Enrolled (ID: {{ u.fingerprint_id }})</span>
+                        {% else %}
+                        <span style="color: orange;">⚠ Not Enrolled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.status == 'Present' %}
+                        <span class="status-present">Present</span>
+                        {% else %}
+                        <span class="status-absent">Absent</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not u.fingerprint_id %}
+                        <form method="post"
+                            action="{{ url_for('teacher.enroll_student_fingerprint', student_id=u.id) }}"
+                            style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btn btn-small" style="margin-right: 5px;">Enroll
+                                Fingerprint</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('admin.delete_student', user_id=u.id) }}"
+                            onsubmit="return confirm('Delete student?');" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btn-secondary">Delete</button>
+                        </form>
+                        <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn"
+                            target="_blank" style="margin-left: 5px;">PDF Report</a>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

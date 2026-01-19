@@ -89,19 +89,16 @@ def register_user():
         fingerprint_id = enroll_fingerprint(user_id)
 
         if fingerprint_id is None:
-            cursor.execute("DELETE FROM Users WHERE id = %s", (user_id,))
+            flash("Student registered without fingerprint. You can enroll it later.", "warning")
+        else:
+            cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
             conn.commit()
-            flash("Fingerprint enrollment failed", "error")
-            return redirect(url_for("teacher.register_user"))
-
-        cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
-        conn.commit()
+            flash("Student registered with fingerprint successfully!", "success")
 
         if lcd:
             lcd.clear()
             lcd.text(f"User: {name}", 1)
 
-        flash("Student registered successfully!", "success")
         return redirect(url_for("teacher.teacher_dashboard"))
 
     except mysql.connector.Error as e:
@@ -139,19 +136,16 @@ def register_student():
             fingerprint_id = enroll_fingerprint(user_id)
 
             if fingerprint_id is None:
-                cursor.execute("DELETE FROM Users WHERE id = %s", (user_id,))
+                flash("Student registered without fingerprint. You can enroll it later.", "warning")
+            else:
+                cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
                 conn.commit()
-                flash("Fingerprint enrollment failed", "error")
-                return redirect(url_for("teacher.register_student"))
-
-            cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, user_id))
-            conn.commit()
+                flash("Student registered with fingerprint successfully!", "success")
 
             if lcd:
                 lcd.clear()
                 lcd.text(f"Registered {name}", 1)
 
-            flash("Student registered successfully!", "success")
             return redirect(url_for("teacher.teacher_dashboard"))
 
         except mysql.connector.Error as e:
@@ -163,6 +157,54 @@ def register_student():
                 conn.close()
 
     return render_template("register.html")
+
+@teacher_bp.route('/enroll_fingerprint/<int:student_id>', methods=['POST'])
+def enroll_student_fingerprint(student_id):
+    if "teacher_id" not in session and "admin_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM Users WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+
+        if not student:
+            flash("Student not found", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        if student.get("fingerprint_id"):
+            flash(f"{student['name']} already has a fingerprint enrolled.", "warning")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        if lcd:
+            lcd.clear()
+            lcd.text(f"Enroll: {student['name'][:12]}", 1)
+            lcd.text("Place finger...", 2)
+
+        fingerprint_id = enroll_fingerprint(student_id)
+
+        if fingerprint_id is None:
+            flash(f"Fingerprint enrollment failed for {student['name']}", "error")
+        else:
+            cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (fingerprint_id, student_id))
+            conn.commit()
+            flash(f"Fingerprint enrolled successfully for {student['name']}!", "success")
+
+        if lcd:
+            lcd.clear()
+
+        return redirect(url_for("teacher.teacher_dashboard"))
+
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error enrolling fingerprint: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    finally:
+        if conn:
+            conn.close()
 
 @teacher_bp.route('/login', methods=['GET', 'POST'])
 def teacher_login():

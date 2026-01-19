@@ -39,7 +39,9 @@
                 <tr>
                     <th>Name</th>
                     <th>Class</th>
+                    <th>Fingerprint</th>
                     <th>Status (Today)</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,10 +50,25 @@
                         <td>{{ user.name }}</td>
                         <td>{{ user.class }}</td>
                         <td>
+                            {% if user.fingerprint_id %}
+                                <span style="color: green;">✓ Enrolled</span>
+                            {% else %}
+                                <span style="color: orange;">⚠ Not Enrolled</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if user.status == 'Present' %}
                                 <span class="status-present">Present</span>
                             {% else %}
                                 <span class="status-absent">Absent</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not user.fingerprint_id %}
+                            <form method="post" action="{{ url_for('teacher.enroll_student_fingerprint', student_id=user.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-small">Enroll Fingerprint</button>
+                            </form>
                             {% endif %}
                         </td>
                     </tr>
