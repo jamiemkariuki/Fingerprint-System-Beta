@@ -2,10 +2,12 @@
 {% block content %}
 <div class="card text-center">
     <h1>School Fingerprint Attendance</h1>
-    <p>A simple system to register students and record attendance using a fingerprint sensor. Teachers can review daily presence by class, while admins manage teachers and students.</p>
+    <p>A simple system to register students and record attendance using a fingerprint sensor. Teachers can review daily
+        presence by class, while admins manage teachers and students.</p>
     <div class="mt-20">
         <a href="{{ url_for('teacher.teacher_login') }}" class="btn">Teacher Login</a>
         <a href="{{ url_for('admin.admin_login') }}" class="btn btn-secondary">Admin Login</a>
+        <a href="{{ url_for('parent.parent_login') }}" class="btn">Parent Login</a>
     </div>
 </div>
 
