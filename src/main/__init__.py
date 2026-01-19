@@ -16,27 +16,28 @@ def create_app(config_class=Config):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
     
-    # Fallback for Docker environment if paths look wrong
-    if not os.path.exists(os.path.join(project_root, 'templates')):
-        if os.path.exists('/app/templates'):
-            project_root = '/app'
+    # Fallback to /app if we are in Docker and the root seems wrong
+    if not os.path.exists(os.path.join(project_root, 'templates')) and os.path.exists('/app/templates'):
+        project_root = '/app'
 
-    template_dir = os.path.join(project_root, 'templates')
-    static_dir = os.path.join(project_root, 'static')
-    
+    print(f"DEBUG: Initializing Flask with root_path: {project_root}", flush=True)
+    print(f"DEBUG: Templates directory: {os.path.join(project_root, 'templates')}", flush=True)
+    print(f"DEBUG: Templates exist: {os.path.exists(os.path.join(project_root, 'templates'))}", flush=True)
+
     app = Flask(
         __name__,
-        template_folder=template_dir,
-        static_folder=static_dir
+        root_path=project_root,
+        template_folder='templates',
+        static_folder='static'
     )
     app.config.from_object(config_class)
 
-    # Debug logging that will show up in gunicorn
-    app.logger.error(f"DEBUG: project_root calculated as: {project_root}")
-    app.logger.error(f"DEBUG: template_dir set to: {app.template_folder}")
-    app.logger.error(f"DEBUG: template_dir exists: {os.path.exists(app.template_folder)}")
+    # Secondary check after initialization
+    print(f"DEBUG: Flask template_folder: {app.template_folder}", flush=True)
     if os.path.exists(app.template_folder):
-        app.logger.error(f"DEBUG: templates found: {os.listdir(app.template_folder)}")
+        print(f"DEBUG: Found templates: {os.listdir(app.template_folder)}", flush=True)
+    else:
+        print(f"DEBUG: ERROR - Template folder NOT FOUND at {app.template_folder}", flush=True)
 
     # Initialize extensions
     csrf.init_app(app)
