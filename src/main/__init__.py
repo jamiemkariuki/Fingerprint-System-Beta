@@ -14,11 +14,18 @@ csrf = CSRFProtect()
 def create_app(config_class=Config):
     # Compute repo root (two levels up from this file: src/main/__init__.py -> src -> root)
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    
+    template_dir = os.path.join(project_root, 'templates')
+    static_dir = os.path.join(project_root, 'static')
+    
+    print(f"DEBUG: project_root: {project_root}")
+    print(f"DEBUG: template_dir: {template_dir}")
+    print(f"DEBUG: template_dir exists: {os.path.exists(template_dir)}")
 
     app = Flask(
         __name__,
-        template_folder=os.path.join(project_root, 'templates'),
-        static_folder=os.path.join(project_root, 'static')
+        template_folder=template_dir,
+        static_folder=static_dir
     )
     app.config.from_object(config_class)
 
