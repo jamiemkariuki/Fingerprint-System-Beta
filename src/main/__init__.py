@@ -12,23 +12,11 @@ from .blueprints.teacher import teacher_bp
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    # Determine template and static folder paths
-    # In Docker, use absolute paths. Otherwise, calculate relative to this file.
-    if os.path.exists('/app/templates') and os.path.exists('/app/static'):
-        # Running in Docker container
-        template_folder = '/app/templates'
-        static_folder = '/app/static'
-    else:
-        # Running locally - calculate from file location
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
-        template_folder = os.path.join(project_root, 'templates')
-        static_folder = os.path.join(project_root, 'static')
-
+    # Templates and static are in the same directory as this file
     app = Flask(
         __name__,
-        template_folder=template_folder,
-        static_folder=static_folder
+        template_folder='templates',
+        static_folder='static'
     )
     app.config.from_object(config_class)
 
