@@ -99,6 +99,11 @@ def admin_dashboard():
         logger.exception("MySQL Error on admin dashboard: %s", e)
         flash(f"Database error: {e}", "error")
         return redirect(url_for("admin.admin_dashboard"))
+    except Exception as e:
+        # Catch-all to avoid crashing the admin dashboard; log and show a friendly error
+        logger.exception("Unhandled error on admin dashboard: %s", e)
+        flash("An unexpected error occurred while loading the admin dashboard.", "error")
+        return redirect(url_for("admin.admin_dashboard"))
     finally:
         if conn:
             conn.close()
