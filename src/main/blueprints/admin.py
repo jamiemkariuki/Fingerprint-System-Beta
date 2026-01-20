@@ -105,7 +105,38 @@ def admin_dashboard():
 
 @admin_bp.route('/login', methods=['GET', 'POST'])
 def admin_login():
-    return redirect(url_for("main.login"))
+    # Support both rendering the login form (GET) and processing login (POST)
+    if request.method == 'GET':
+        return render_template('admin_login.html')
+
+    # POST: process admin login
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    if not username or not password:
+        flash("Username and password are required", "error")
+        return redirect(url_for("admin.admin_login"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Admins WHERE username = %s", (username,))
+        admin = cursor.fetchone()
+
+        if admin and bcrypt.checkpw(password.encode(), admin["password_hash"].encode()):
+            session["admin_id"] = admin["id"]
+            return redirect(url_for("admin.admin_dashboard"))
+
+        flash("Invalid username or password", "error")
+        return redirect(url_for("admin.admin_login"))
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error during admin login: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("admin.admin_login"))
+    finally:
+        if conn:
+            conn.close()
 
 @admin_bp.route('/logout')
 def admin_logout():
