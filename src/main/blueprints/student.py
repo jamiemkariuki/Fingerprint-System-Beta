@@ -13,33 +13,7 @@ student_bp = Blueprint('student', __name__)
 
 @student_bp.route('/login', methods=['GET', 'POST'])
 def student_login():
-    if request.method == "GET":
-        return render_template("student_login.html")
-
-    username = request.form.get("username")
-    password = request.form.get("password")
-
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Users WHERE username = %s", (username,))
-        student = cursor.fetchone()
-
-        if student and student.get("password_hash") and bcrypt.checkpw(password.encode(), student["password_hash"].encode()):
-            session["student_id"] = student["id"]
-            session["student_name"] = student["name"]
-            return redirect(url_for("student.student_dashboard"))
-        else:
-            flash("Invalid student credentials", "error")
-            return redirect(url_for("student.student_login"))
-    except mysql.connector.Error as e:
-        logger.exception("MySQL Error during student login: %s", e)
-        flash(f"Database error: {e}", "error")
-        return redirect(url_for("student.student_login"))
-    finally:
-        if conn:
-            conn.close()
+    return redirect(url_for("main.login"))
 
 
 @student_bp.route('/dashboard')

@@ -71,33 +71,7 @@ def teacher_dashboard():
 
 @teacher_bp.route('/login', methods=['GET', 'POST'])
 def teacher_login():
-    if request.method == "GET":
-        return render_template("teacher_login.html")
-
-    username = request.form.get("username")
-    password = request.form.get("password")
-
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Teachers WHERE username = %s", (username,))
-        teacher = cursor.fetchone()
-
-        if teacher and bcrypt.checkpw(password.encode(), teacher["password_hash"].encode()):
-            session["teacher_id"] = teacher["id"]
-            session["teacher_name"] = teacher["name"]
-            return redirect(url_for("teacher.teacher_dashboard"))
-        else:
-            flash("Invalid teacher credentials", "error")
-            return redirect(url_for("teacher.teacher_login"))
-    except mysql.connector.Error as e:
-        logger.exception("MySQL Error during teacher login: %s", e)
-        flash(f"Database error: {e}", "error")
-        return redirect(url_for("teacher.teacher_login"))
-    finally:
-        if conn:
-            conn.close()
+    return redirect(url_for("main.login"))
 
 @teacher_bp.route('/logout')
 def teacher_logout():

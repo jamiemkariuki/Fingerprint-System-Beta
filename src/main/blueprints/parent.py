@@ -12,32 +12,7 @@ parent_bp = Blueprint('parent', __name__)
 
 @parent_bp.route('/login', methods=['GET', 'POST'])
 def parent_login():
-    if request.method == "GET":
-        return render_template("parent_login.html")
-
-    username = request.form.get("username")
-    password = request.form.get("password")
-
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Parents WHERE username = %s", (username,))
-        parent = cursor.fetchone()
-
-        if parent and bcrypt.checkpw(password.encode(), parent["password_hash"].encode()):
-            session["parent_id"] = parent["id"]
-            return redirect(url_for("parent.parent_dashboard"))
-        else:
-            flash("Invalid parent credentials", "error")
-            return redirect(url_for("parent.parent_login"))
-    except mysql.connector.Error as e:
-        logger.exception("MySQL Error during parent login: %s", e)
-        flash(f"Database error: {e}", "error")
-        return redirect(url_for("parent.parent_login"))
-    finally:
-        if conn:
-            conn.close()
+    return redirect(url_for("main.login"))
 
 @parent_bp.route('/dashboard')
 def parent_dashboard():

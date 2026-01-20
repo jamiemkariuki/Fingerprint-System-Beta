@@ -25,10 +25,7 @@
             <li><a href="{{ url_for('parent.parent_logout') }}">Logout</a></li>
           {% else %}
             <li><a href="{{ url_for('main.home') }}">Home</a></li>
-            <li><a href="{{ url_for('teacher.teacher_login') }}">Teacher Login</a></li>
-            <li><a href="{{ url_for('admin.admin_login') }}">Admin Login</a></li>
-            <li><a href="{{ url_for('parent.parent_login') }}">Parent Login</a></li>
-            <li><a href="{{ url_for('student.student_login') }}">Student Login</a></li>
+            <li><a href="{{ url_for('main.login') }}">Login</a></li>
           {% endif %}
         </ul>
       </nav>
