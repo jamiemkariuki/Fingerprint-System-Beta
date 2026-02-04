@@ -44,23 +44,28 @@
                         <td>{{ audit.subject_name }}</td>
                         <td>
                             {% if audit.status == 'Cleared' %}
-                                <span style="color: green;">✓ Cleared</span>
+                            <span style="color: green;">✓ Cleared</span>
                             {% elif audit.status == 'Not Cleared' %}
-                                <span style="color: red;">✗ Not Cleared</span>
+                            <span style="color: red;">✗ Not Cleared</span>
                             {% else %}
-                                <span style="color: orange;">⚠ Pending</span>
+                            <span style="color: orange;">⚠ Pending</span>
                             {% endif %}
                         </td>
                         <td>
-                            <form method="post" action="{{ url_for('teacher.update_audit_status') }}" style="display: flex; gap: 5px;">
+                            <form method="post" action="{{ url_for('teacher.update_audit_status') }}"
+                                style="display: flex; gap: 5px;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                 <input type="hidden" name="audit_id" value="{{ audit.id }}">
                                 <select name="status" style="width: 120px; padding: 2px;">
-                                    <option value="Pending" {% if audit.status == 'Pending' %}selected{% endif %}>Pending</option>
-                                    <option value="Cleared" {% if audit.status == 'Cleared' %}selected{% endif %}>Cleared</option>
-                                    <option value="Not Cleared" {% if audit.status == 'Not Cleared' %}selected{% endif %}>Not Cleared</option>
+                                    <option value="Pending" {% if audit.status=='Pending' %}selected{% endif %}>Pending
+                                    </option>
+                                    <option value="Cleared" {% if audit.status=='Cleared' %}selected{% endif %}>Cleared
+                                    </option>
+                                    <option value="Not Cleared" {% if audit.status=='Not Cleared' %}selected{% endif %}>
+                                        Not Cleared</option>
                                 </select>
-                                <input name="notes" placeholder="Notes..." value="{{ audit.notes or '' }}" style="width: 100px; padding: 2px;">
+                                <input name="notes" placeholder="Notes..." value="{{ audit.notes or '' }}"
+                                    style="width: 100px; padding: 2px;">
                                 <button type="submit" class="btn btn-small">Update</button>
                             </form>
                         </td>
@@ -112,13 +117,22 @@
             <input id="student_class" name="class" value="{{ teacher.class }}" required>
             <label for="student_password">Password</label>
             <input id="student_password" name="password" type="password" required>
+            <div style="margin: 15px 0;">
+                <input type="checkbox" id="enroll_now" name="fingerprint" value="1">
+                <label for="enroll_now" style="display:inline; font-weight: normal;">Enroll Fingerprint Now</label>
+            </div>
             <button type="submit">Create Student</button>
         </form>
         {% if users %}
         <h4>Existing Students</h4>
         <table>
             <thead>
-                <tr><th>Name</th><th>Class</th><th>Status</th><th>Actions</th></tr>
+                <tr>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>
                 {% for u in users %}
@@ -127,7 +141,8 @@
                     <td>{{ u.class }}</td>
                     <td>{{ u.status }}</td>
                     <td>
-                        <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn btn-small" target="_blank">Download PDF</a>
+                        <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn btn-small"
+                            target="_blank">Download PDF</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -178,7 +193,11 @@
         <h4>Existing Parents</h4>
         <table>
             <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th></tr>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                </tr>
             </thead>
             <tbody>
                 {% for p in parents %}
@@ -195,70 +214,70 @@
 </div>
 
 <style>
-.admin-nav {
-    display: flex;
-    overflow-x: auto;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
-    background-color: var(--off-white);
-    padding: 0 10px;
-}
+    .admin-nav {
+        display: flex;
+        overflow-x: auto;
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--border-color);
+        background-color: var(--off-white);
+        padding: 0 10px;
+    }
 
-.tab-link {
-    background-color: #f8f9fa;
-    border: 1px solid var(--border-color);
-    padding: 12px 20px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    border-radius: 5px 5px 0 0;
-    margin-right: 5px;
-    color: var(--text-dark);
-    transition: background-color 0.3s, color 0.3s;
-}
+    .tab-link {
+        background-color: #f8f9fa;
+        border: 1px solid var(--border-color);
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        border-radius: 5px 5px 0 0;
+        margin-right: 5px;
+        color: var(--text-dark);
+        transition: background-color 0.3s, color 0.3s;
+    }
 
-.tab-link:hover {
-    background-color: #e9ecef;
-}
+    .tab-link:hover {
+        background-color: #e9ecef;
+    }
 
-.tab-link.active {
-    background-color: var(--brown-medium);
-    color: white;
-    border-bottom-color: var(--brown-medium);
-}
+    .tab-link.active {
+        background-color: var(--brown-medium);
+        color: white;
+        border-bottom-color: var(--brown-medium);
+    }
 
-.tab-content {
-    display: none;
-}
+    .tab-content {
+        display: none;
+    }
 
-.tab-content.active {
-    display: block;
-}
+    .tab-content.active {
+        display: block;
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var tabcontent = document.getElementsByClassName("tab-content");
-    for (var i = 0; i < tabcontent.length; i++) {
-        if (!tabcontent[i].classList.contains('active')) {
+    document.addEventListener('DOMContentLoaded', function () {
+        var tabcontent = document.getElementsByClassName("tab-content");
+        for (var i = 0; i < tabcontent.length; i++) {
+            if (!tabcontent[i].classList.contains('active')) {
+                tabcontent[i].style.display = "none";
+            }
+        }
+    });
+
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
             tabcontent[i].style.display = "none";
         }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
     }
-});
-
-function openTab(evt, tabName) {
-    var i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-    tablinks = document.getElementsByClassName("tab-link");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-    document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
-}
 </script>
 
 {% endblock %}

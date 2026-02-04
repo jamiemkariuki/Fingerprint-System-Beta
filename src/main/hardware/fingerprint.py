@@ -1,121 +1,186 @@
-import logging
-import serial
 import time
-
+import threading
+import logging
 try:
-    from adafruit_fingerprint import Adafruit_Fingerprint
+    from zkfp import ZKFP2
 except ImportError:
-    Adafruit_Fingerprint = None  # type: ignore
+    ZKFP2 = None
 
 logger = logging.getLogger(__name__)
 
-# Initialize fingerprint sensor
-finger = None
-try:
-    uart = serial.Serial("/dev/serial0", baudrate=57600, timeout=1)
-    if Adafruit_Fingerprint:
-        finger = Adafruit_Fingerprint(uart)
-        logger.info("Fingerprint sensor initialized successfully")
-    else:
-        logger.warning("Adafruit_Fingerprint library not available; sensor disabled")
-except Exception as e:
-    logger.warning("Fingerprint sensor initialization failed: %s", e)
+# Singleton simulation for module-level access
+_scanner_instance = None
+_lock = threading.Lock()
 
+class FingerprintScanner:
+    def __init__(self):
+        self.zk = None
+        self.device_count = 0
+        self.is_connected = False
+        self.users_cache = {}  # {db_id: template_bytes}
+        self.initialized = False
+        self._last_init_attempt = 0
+        self.current_device_index = -1
+        self.banned_indices = set()
+        self._init_hardware()
 
-def _wait_for_finger(lcd_obj, prompt="Place finger..."):
-    """Wait until a finger is placed on the sensor."""
-    if lcd_obj:
-        lcd_obj.clear()
-        lcd_obj.text(prompt, 1)
-    # The loop waits while get_image() returns a non-zero value (no image/fail)
-    while finger.get_image() != 0: 
-        time.sleep(0.1)
+    def _init_hardware(self):
+        # Prevent rapid re-initialization attempts (Backoff Strategy)
+        if (time.time() - self._last_init_attempt) < 5:
+            return
 
+        self._last_init_attempt = time.time()
+        
+        # If we are already connected, verify it's still alive, otherwise reset
+        if self.is_connected:
+            return
 
-def _image_to_template(lcd_obj, slot: int) -> bool:
-    """Convert the scanned image to a template in the given slot."""
-    if finger.image_2_tz(slot) != 0:
-        if lcd_obj:
-            lcd_obj.clear()
-            lcd_obj.text(f"Scan fail {slot}", 1)
-        logger.warning(f"Image to template failed at slot {slot}")
-        return False
-    return True
+        if ZKFP2:
+            try:
+                # Only re-instantiate if null
+                if self.zk is None:
+                    self.zk = ZKFP2()
+                    self.zk.Init()
+                
+                self.device_count = self.zk.GetDeviceCount()
+                logger.info(f"ZKFP initialized. Devices found: {self.device_count}")
+                
+                if self.device_count > 0:
+                    # If all devices are banned, reset the ban list to try again
+                    if len(self.banned_indices) >= self.device_count:
+                        logger.warning("All devices were banned. Resetting ban list to retry.")
+                        self.banned_indices.clear()
 
+                    # Try to open available devices until one works
+                    for i in range(self.device_count):
+                        if i in self.banned_indices:
+                            logger.info(f"Skipping banned device index {i}")
+                            continue
 
-def _create_model(lcd_obj) -> bool:
-    """Combine two templates to create a fingerprint model."""
-    if finger.create_model() != 0:
-        if lcd_obj:
-            lcd_obj.clear()
-            lcd_obj.text("No match!", 1)
-        logger.warning("Model creation failed")
-        return False
-    return True
+                        try:
+                            logger.info(f"Attempting to open device index {i}...")
+                            self.zk.OpenDevice(i)
+                            self.is_connected = True
+                            self.current_device_index = i
+                            logger.info(f"Successfully opened ZK9500 (Index {i})")
+                            break
+                        except Exception as open_err:
+                            logger.warning(f"Failed to open device {i}: {open_err}")
+                    
+                    if not self.is_connected:
+                        logger.error("Could not open any detected devices.")
+            except Exception as e:
+                logger.error(f"ZKFP Initialization/Connection failed: {e}")
+                # If Init failed, maybe we need to recreate the object next time
+                self.zk = None 
+        else:
+            if not self.initialized: # Log once
+                logger.warning("ZKFP library not found. Running in MOCK mode.")
+            self.initialized = True # Mark as "initialized" so we don't spam mock warning
 
+    def load_users(self, users_dict):
+        """
+        Load users into memory for fast matching.
+        users_dict: { id: template_bytes }
+        """
+        with _lock:
+            self.users_cache = users_dict
+            logger.info(f"Loaded {len(self.users_cache)} templates into memory.")
 
-def _store_model(lcd_obj, fid: int):
-    """Store the fingerprint model in a specified slot (fid)."""
-    if finger.store_model(fid) == 0:
-        if lcd_obj:
-            lcd_obj.clear()
-            lcd_obj.text(f"Saved ID:{fid}", 1)
-        return fid
+    def capture_template(self, timeout=10):
+        """
+        Waits for a finger and returns the template bytes.
+        Blocking call with timeout.
+        """
+        if not self.is_connected:
+            # Try to reconnect if not connected
+            self._init_hardware()
+            if not self.is_connected:
+                time.sleep(1)
+                return None
+
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            try: 
+                capture = self.zk.AcquireFingerprint()
+                if capture:
+                    tmp, img = capture
+                    return bytes(tmp)
+            except Exception as e:
+                # If handle is invalid or device disconnected, mark as not connected
+                err_msg = str(e).lower()
+                if "handle" in err_msg or "device" in err_msg:
+                    logger.error(f"Hardware connection lost: {e}")
+                    
+                    # Mark this specific index as bad so we don't pick it again immediately
+                    if self.current_device_index != -1:
+                        logger.warning(f"Banning device index {self.current_device_index} due to error.")
+                        self.banned_indices.add(self.current_device_index)
+                    
+                    self.is_connected = False
+                    self.current_device_index = -1
+                    return None
+                
+                # For other errors (glitches), just log and continue
+                logger.error(f"Capture error: {e}")
+                time.sleep(1)
+            time.sleep(0.1)
+        return None
+
+    def match_template(self, scanned_template):
+        """
+        Matches a scanned template against the loaded cache.
+        Returns: (best_id, score) or (None, 0)
+        """
+        if not self.is_connected:
+            return None, 0
+
+        best_score = 0
+        best_id = None
+        
+        with _lock:
+            # We iterate over a copy of items to avoid runtime errors if cache changes
+            for uid, stored_tmpl in list(self.users_cache.items()):
+                try:
+                    score = self.zk.DBMatch(stored_tmpl, scanned_template)
+                    if score > 80 and score > best_score:
+                        best_score = score
+                        best_id = uid
+                except:
+                    continue
+        
+        return best_id, best_score
     
-    # Store failed
-    if lcd_obj:
-        lcd_obj.clear()
-        lcd_obj.text("Store failed", 1)
-    logger.warning(f"Failed to store model at ID {fid}")
+    def close(self):
+        if self.zk: 
+            try:
+                self.zk.CloseDevice()
+                self.zk.Terminate()
+            except: 
+                pass
+
+# Global instance
+def get_scanner():
+    global _scanner_instance
+    if _scanner_instance is None:
+        _scanner_instance = FingerprintScanner()
+    return _scanner_instance
+
+# Wrapper functions to maintain some compatibility or easy access
+def enroll_fingerprint(db_id=None):
+    """
+    Captures a fingerprint and returns the template bytes.
+    Note: The original app expected an ID returned. 
+    Here we return the TEMPLATE (bytes) so the caller can save it to DB.
+    """
+    scanner = get_scanner()
+    logger.info("Starting enrollment capture...")
+    template = scanner.capture_template(timeout=15)
+    if template:
+        logger.info("Enrollment capture successful.")
+        return template
+    logger.warning("Enrollment capture timed out.")
     return None
 
-
-# --- FIXED ENROLLMENT FUNCTION ---
-def enroll_fingerprint(db_id: int): 
-    """Enroll a new fingerprint using a specific, pre-assigned ID (db_id)."""
-    from ..hardware.lcd import lcd
-
-    if not finger:
-        logger.error("Fingerprint sensor unavailable")
-        if lcd:
-            lcd.clear()
-            lcd.text("Sensor Error", 1)
-        return None
-
-    # 1. Validate the provided DB ID
-    if db_id is None or db_id <= 0:
-        if lcd:
-            lcd.clear()
-            lcd.text("Invalid ID", 1)
-        logger.error("Invalid database ID provided for enrollment.")
-        return None
-
-    # STEP 1 — First scan
-    _wait_for_finger(lcd, "Scan finger...")
-    if not _image_to_template(lcd, 1):
-        return None
-
-    if lcd:
-        lcd.clear()
-        lcd.text("Remove finger", 1)
-    time.sleep(2)
-
-    # STEP 2 — Second scan
-    _wait_for_finger(lcd, "Scan again...")
-    if not _image_to_template(lcd, 2):
-        return None
-
-    # STEP 3 — Create model
-    if not _create_model(lcd):
-        return None
-
-    # STEP 4 — Store model using the provided db_id
-    # This ensures the Sensor ID matches the DB ID.
-    stored_id = _store_model(lcd, db_id) 
-    
-    if stored_id is None:
-        return None
-
-    # Success
-    logger.info(f"Fingerprint enrolled successfully → ID {stored_id}")
-    return stored_id
+# Export 'finger'-like object if needed, but we prefer direct usage
+finger = get_scanner()

@@ -12,11 +12,15 @@ from .blueprints.teacher import teacher_bp
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    # Templates and static are in the same directory as this file
+    # Calculate path to root folder (Fingerprint-System-Beta)
+    # this file is in src/main
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # src
+    root_dir = os.path.dirname(base_dir) # Fingerprint-System-Beta
+    
     app = Flask(
         __name__,
-        template_folder='templates',
-        static_folder='static'
+        template_folder=os.path.join(root_dir, 'templates'),
+        static_folder=os.path.join(root_dir, 'static')
     )
     app.config.from_object(config_class)
 

@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS `Teachers` (
   email VARCHAR(128) NOT NULL,
   class VARCHAR(64) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  fingerprint_id INT UNSIGNED NULL,
+  fingerprint_id INT UNSIGNED NULL, -- Kept for legacy compatible (optional)
+  fingerprint_template BLOB NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uniq_teacher_username (username),
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
   password_hash VARCHAR(255) NULL,
   class VARCHAR(64) NOT NULL,
   fingerprint_id INT UNSIGNED NULL,
+  fingerprint_template BLOB NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uniq_user_username (username),

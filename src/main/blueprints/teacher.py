@@ -147,13 +147,15 @@ def create_student():
         if fingerprint == '1':
             try:
                 from ..hardware.fingerprint import enroll_fingerprint
-                enrolled = enroll_fingerprint(user_id)
-                if enrolled:
-                    cursor.execute("UPDATE Users SET fingerprint_id = %s WHERE id = %s", (enrolled, user_id))
+                # Enrolls returns BYTES (the template) or None
+                template_bytes = enroll_fingerprint() 
+                
+                if template_bytes:
+                    cursor.execute("UPDATE Users SET fingerprint_template = %s WHERE id = %s", (template_bytes, user_id))
                     conn.commit()
-                    flash("Fingerprint enrolled and linked to student.", "success")
+                    flash("Fingerprint enrolled and saved to database.", "success")
                 else:
-                    flash("Fingerprint enrollment not available or sensor error.", "warning")
+                    flash("Fingerprint enrollment failed or timed out.", "warning")
             except Exception as e:
                 logger.exception("Fingerprint enrollment error: %s", e)
                 flash("Fingerprint enrollment failed: {}".format(e), "error")
