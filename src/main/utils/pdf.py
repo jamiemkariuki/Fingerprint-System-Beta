@@ -7,9 +7,14 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 import logging
 
+import logging
+import os
+from pypdf import PdfReader, PdfWriter
+
 logger = logging.getLogger(__name__)
 
 # Define Constants
+HEADER_PDF_PATH = "st nicholas logo and header.pdf"
 DEFAULT_FONT_SIZE = 10
 HEADING_FONT_SIZE = 14
 TITLE_FONT_SIZE = 18
@@ -53,6 +58,37 @@ def _get_table_style(header_cols, row_cols):
     ])
 
 
+def _add_header_to_pdf(generated_pdf_bytes):
+    """Helper to overlay the header PDF onto each page of the generated PDF"""
+    try:
+        # Check if header PDF exists
+        if not os.path.exists(HEADER_PDF_PATH):
+            logger.error("Header PDF not found at %s. Returning plain PDF.", HEADER_PDF_PATH)
+            return generated_pdf_bytes
+
+        header_reader = PdfReader(HEADER_PDF_PATH)
+        if not header_reader.pages:
+            logger.error("Header PDF is empty. Returning plain PDF.")
+            return generated_pdf_bytes
+        
+        header_page = header_reader.pages[0]
+        
+        generated_reader = PdfReader(BytesIO(generated_pdf_bytes))
+        writer = PdfWriter()
+        
+        for i, page in enumerate(generated_reader.pages):
+            if i == 0:
+                page.merge_page(header_page)
+            writer.add_page(page)
+            
+        output_buffer = BytesIO()
+        writer.write(output_buffer)
+        return output_buffer.getvalue()
+    except Exception as e:
+        logger.exception("Error adding header to PDF: %s", e)
+        return generated_pdf_bytes
+
+
 def generate_attendance_pdf(student, attendance_logs):
     """Generate PDF content for student attendance report"""
     try:
@@ -61,6 +97,9 @@ def generate_attendance_pdf(student, attendance_logs):
         styles, title_style, heading_style = _get_common_styles()
         
         story = []
+        
+        # Add top spacer to avoid collision with header (approx 1.5 inches)
+        story.append(Spacer(1, 1.5*inch))
         
         story.append(Paragraph("Student Attendance Report", title_style))
         story.append(Spacer(1, 20))
@@ -125,8 +164,7 @@ def generate_attendance_pdf(student, attendance_logs):
             story.append(Paragraph("No attendance records found.", styles['Normal']))
         
         doc.build(story)
-        buffer.seek(0)
-        return buffer.getvalue()
+        return _add_header_to_pdf(buffer.getvalue())
     except Exception as e:
         logger.exception("Error generating student attendance PDF: %s", e)
         raise
@@ -140,6 +178,9 @@ def generate_class_attendance_pdf(class_name, students, date):
         styles, title_style, heading_style = _get_common_styles()
         
         story = []
+        
+        # Add top spacer to avoid collision with header (approx 1.5 inches)
+        story.append(Spacer(1, 1.5*inch))
         
         story.append(Paragraph(f"Class Attendance Report - {class_name} ({date.strftime('%Y-%m-%d')})", title_style))
         story.append(Spacer(1, 20))
@@ -160,11 +201,12 @@ def generate_class_attendance_pdf(class_name, students, date):
             story.append(Paragraph("No students found for this class.", styles['Normal']))
         
         doc.build(story)
-        buffer.seek(0)
-        return buffer.getvalue()
+        return _add_header_to_pdf(buffer.getvalue())
     except Exception as e:
         logger.exception("Error generating class attendance PDF: %s", e)
         raise
+
+
 def generate_audit_report_pdf(student, audit_records):
     """Generate PDF content for student clearance/audit report"""
     try:
@@ -173,6 +215,9 @@ def generate_audit_report_pdf(student, audit_records):
         styles, title_style, heading_style = _get_common_styles()
         
         story = []
+        
+        # Add top spacer to avoid collision with header (approx 1.5 inches)
+        story.append(Spacer(1, 1.5*inch))
         
         # Title
         story.append(Paragraph("Student Clearance Certificate", title_style))
@@ -210,8 +255,6 @@ def generate_audit_report_pdf(student, audit_records):
                 ])
             
             audit_table = Table(table_data, colWidths=[1.5*inch, 1*inch, 3*inch])
-            
-            # Custom style for audit table to handle status colors potentially? (Simplified for now)
             audit_table.setStyle(_get_table_style(3, 3))
             story.append(audit_table)
         else:
@@ -224,8 +267,78 @@ def generate_audit_report_pdf(student, audit_records):
         story.append(Paragraph("Head of Department / Bursar", styles['Normal']))
 
         doc.build(story)
-        buffer.seek(0)
-        return buffer.getvalue()
+        return _add_header_to_pdf(buffer.getvalue())
     except Exception as e:
         logger.exception("Error generating audit report PDF: %s", e)
+        raise
+
+
+def generate_exam_results_pdf(student, exam_results):
+    """Generate PDF content for student exam results report"""
+    try:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles, title_style, heading_style = _get_common_styles()
+        
+        story = []
+        
+        # Add top spacer to avoid collision with header (approx 1.5 inches)
+        story.append(Spacer(1, 1.5*inch))
+        
+        # Title
+        story.append(Paragraph("Student Performance Report - Exam Results", title_style))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        # Student Info
+        story.append(Paragraph("Student Information", heading_style))
+        student_info = [
+            ["Name:", student["name"]],
+            ["Class:", student["class"]],
+            ["Student ID:", str(student["id"])]
+        ]
+        
+        student_table = Table(student_info, colWidths=[1.5*inch, 4*inch])
+        student_table.setStyle(_get_table_style(2, 2))
+        story.append(student_table)
+        story.append(Spacer(1, 30))
+        
+        # Results Table
+        story.append(Paragraph("Academic Performance Summary", heading_style))
+        
+        if exam_results:
+            table_data = [["Subject", "Term - Type", "Score", "Grade", "Remarks"]]
+            
+            for res in exam_results:
+                subject_name = res["subject_name"]
+                term_type = f"{res['term']} - {res['exam_type']}"
+                score_str = f"{res['score']} / {res['max_score']}"
+                grade = res["grade"] if res["grade"] else "-"
+                remarks = res["remarks"] if res["remarks"] else "-"
+                
+                table_data.append([
+                    subject_name,
+                    term_type,
+                    score_str,
+                    grade,
+                    Paragraph(remarks, styles['Normal'])
+                ])
+            
+            results_table = Table(table_data, colWidths=[1.5*inch, 1.2*inch, 0.8*inch, 0.5*inch, 1.6*inch])
+            results_table.setStyle(_get_table_style(5, 5))
+            story.append(results_table)
+        else:
+            story.append(Paragraph("No exam results found for this student.", styles['Normal']))
+        
+        story.append(Spacer(1, 40))
+        story.append(Paragraph("Official School Stamp & Signature:", styles['Normal']))
+        story.append(Spacer(1, 50))
+        story.append(Paragraph("________________________________________", styles['Normal']))
+        story.append(Paragraph("Head Teacher / Academic Registrar", styles['Normal']))
+
+        doc.build(story)
+        return _add_header_to_pdf(buffer.getvalue())
+    except Exception as e:
+        logger.exception("Error generating exam results PDF: %s", e)
         raise

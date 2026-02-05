@@ -5,6 +5,7 @@
     <button class="tab-link active" onclick="openTab(event, 'Overview')">Overview</button>
     <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing</button>
     <button class="tab-link" onclick="openTab(event, 'Timetable')">Timetable</button>
+    <button class="tab-link" onclick="openTab(event, 'Results')">Results</button>
 </div>
 
 <div id="Overview" class="tab-content active">
@@ -134,6 +135,93 @@
                     {% else %}
                     <tr>
                         <td colspan="4" style="text-align: center;">No timetable entries found for your class.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div id="Results" class="tab-content">
+    <div class="card">
+        <h3>Exam Results</h3>
+        <p class="small text-muted">Your performance records as entered by your teachers.</p>
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+            <div>
+                <label for="filter_term" style="display: block; font-size: 0.8em; margin-bottom: 2px;">Filter
+                    Term</label>
+                <select id="filter_term" class="btn-small"
+                    style="background: white; border: 1px solid #ddd; color: #333;" onchange="updateDownloadLink()">
+                    <option value="">All Terms</option>
+                    {% set terms = [] %}
+                    {% for res in exam_results %}
+                    {% if res.term not in terms %}
+                    {% set _ = terms.append(res.term) %}
+                    <option value="{{ res.term }}">{{ res.term }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filter_type" style="display: block; font-size: 0.8em; margin-bottom: 2px;">Filter
+                    Type</label>
+                <select id="filter_type" class="btn-small"
+                    style="background: white; border: 1px solid #ddd; color: #333;" onchange="updateDownloadLink()">
+                    <option value="">All Types</option>
+                    {% set types = [] %}
+                    {% for res in exam_results %}
+                    {% if res.exam_type not in types %}
+                    {% set _ = types.append(res.exam_type) %}
+                    <option value="{{ res.exam_type }}">{{ res.exam_type }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <a href="{{ url_for('student.download_results') }}" id="download_link" class="btn btn-small"
+                target="_blank">Download Results (PDF)</a>
+        </div>
+
+        <script>
+            function updateDownloadLink() {
+                const term = document.getElementById('filter_term').value;
+                const type = document.getElementById('filter_type').value;
+                let url = "{{ url_for('student.download_results') }}";
+                const params = [];
+                if (term) params.push("term=" + encodeURIComponent(term));
+                if (type) params.push("exam_type=" + encodeURIComponent(type));
+                if (params.length > 0) {
+                    url += (url.includes('?') ? '&' : '?') + params.join("&");
+                }
+                document.getElementById('download_link').href = url;
+            }
+        </script>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Term - Type</th>
+                        <th>Score</th>
+                        <th>Grade</th>
+                        <th>Remarks</th>
+                        <th>Teacher</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if exam_results %}
+                    {% for res in exam_results %}
+                    <tr>
+                        <td style="font-weight: bold;">{{ res.subject_name }}</td>
+                        <td>{{ res.term }} - {{ res.exam_type }}</td>
+                        <td>{{ res.score }} / {{ res.max_score }}</td>
+                        <td><strong>{{ res.grade or '-' }}</strong></td>
+                        <td><small>{{ res.remarks or 'No remarks' }}</small></td>
+                        <td>{{ res.teacher_name or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center;">No exam results found yet.</td>
                     </tr>
                     {% endif %}
                 </tbody>

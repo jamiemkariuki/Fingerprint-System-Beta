@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, Response
 from datetime import datetime, timedelta
 import bcrypt
 import mysql.connector
 from ..database import get_db
 from ..utils.common import _get_student_attendance_status
+from ..utils.pdf import generate_exam_results_pdf
 import logging
 
 logger = logging.getLogger(__name__)
@@ -78,11 +79,89 @@ def parent_dashboard():
             """, (child["class"],))
             child["timetable"] = cursor.fetchall()
 
+            # Get Exam Results
+            cursor.execute("""
+                SELECT er.exam_type, er.term, s.name as subject_name, er.score, er.max_score, er.grade, er.remarks, te.name as teacher_name
+                FROM ExamResults er
+                JOIN Subjects s ON er.subject_id = s.id
+                LEFT JOIN Teachers te ON er.teacher_id = te.id
+                WHERE er.student_id = %s
+                ORDER BY er.term DESC, er.exam_type ASC
+            """, (child["id"],))
+            child["results"] = cursor.fetchall()
+
         return render_template("parent_dashboard.html", parent_info=parent_info, children=children)
 
     except mysql.connector.Error as e:
         logger.exception("MySQL Error on parent dashboard: %s", e)
         flash(f"Database error: {e}", "error")
+        return redirect(url_for("parent.parent_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@parent_bp.route('/child_results_pdf/<int:student_id>')
+def child_results_pdf(student_id):
+    if "parent_id" not in session:
+        return redirect(url_for("parent.parent_login"))
+
+    parent_id = session["parent_id"]
+    term = request.args.get("term")
+    exam_type = request.args.get("exam_type")
+    
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Security check: verify parent is linked to student
+        cursor.execute("""
+            SELECT id FROM StudentParents 
+            WHERE parent_id = %s AND student_id = %s
+        """, (parent_id, student_id))
+        if not cursor.fetchone():
+            flash("Unauthorized access.", "error")
+            return redirect(url_for("parent.parent_dashboard"))
+
+        # Student info
+        cursor.execute("SELECT * FROM Users WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+
+        # Build dynamic query for Exam Results
+        query = """
+            SELECT er.exam_type, er.term, s.name as subject_name, er.score, er.max_score, er.grade, er.remarks
+            FROM ExamResults er
+            JOIN Subjects s ON er.subject_id = s.id
+            WHERE er.student_id = %s
+        """
+        params = [student_id]
+        
+        if term:
+            query += " AND er.term = %s"
+            params.append(term)
+        if exam_type:
+            query += " AND er.exam_type = %s"
+            params.append(exam_type)
+            
+        query += " ORDER BY er.term DESC, er.exam_type ASC"
+        
+        cursor.execute(query, tuple(params))
+        exam_results = cursor.fetchall()
+
+        pdf_content = generate_exam_results_pdf(student, exam_results)
+
+        filename = f"results_{student['name'].replace(' ', '_')}"
+        if term: filename += f"_{term.replace(' ', '_')}"
+        if exam_type: filename += f"_{exam_type.replace(' ', '_')}"
+
+        return Response(
+            pdf_content,
+            mimetype="application/pdf",
+            headers={"Content-disposition": f"attachment; filename={filename}.pdf"}
+        )
+    except Exception as e:
+        logger.exception("Error generating parent results PDF: %s", e)
+        flash("Could not generate PDF.", "error")
         return redirect(url_for("parent.parent_dashboard"))
     finally:
         if conn:

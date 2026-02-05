@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, Response
 import bcrypt
 import mysql.connector
 from ..database import get_db
 from ..utils.common import _get_student_attendance_status
+from ..utils.pdf import generate_exam_results_pdf
 from datetime import datetime
 import logging
 
@@ -58,7 +59,6 @@ def student_dashboard():
             ORDER BY date DESC
         """, (student_id,))
         history = cursor.fetchall()
-
         # Fetch Timetable for student's class
         cursor.execute("""
             SELECT t.day_of_week, s.name as subject_name, t.start_time, t.end_time, te.name as teacher_name, t.subject_id
@@ -70,6 +70,17 @@ def student_dashboard():
         """, (student['class'],))
         timetable = cursor.fetchall()
 
+        # Fetch Exam Results
+        cursor.execute("""
+            SELECT er.exam_type, er.term, s.name as subject_name, er.score, er.max_score, er.grade, er.remarks, te.name as teacher_name
+            FROM ExamResults er
+            JOIN Subjects s ON er.subject_id = s.id
+            LEFT JOIN Teachers te ON er.teacher_id = te.id
+            WHERE er.student_id = %s
+            ORDER BY er.term DESC, er.exam_type ASC
+        """, (student_id,))
+        exam_results = cursor.fetchall()
+
         return render_template(
             "student_dashboard.html",
             student=student,
@@ -77,13 +88,73 @@ def student_dashboard():
             enrolled_subject_ids=enrolled_subject_ids,
             status=status,
             history=history,
-            timetable=timetable
+            timetable=timetable,
+            exam_results=exam_results
         )
 
     except mysql.connector.Error as e:
-        logger.exception("MySQL Error on student dashboard: %s", e)
+        logger.exception("Error loading student dashboard: %s", e)
         flash(f"Database error: {e}", "error")
-        return redirect(url_for("main.home"))
+        return "Internal Server Error", 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@student_bp.route('/download_results')
+def download_results():
+    if "student_id" not in session:
+        return redirect(url_for("student.student_login"))
+
+    student_id = session["student_id"]
+    term = request.args.get("term")
+    exam_type = request.args.get("exam_type")
+    
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Student info
+        cursor.execute("SELECT * FROM Users WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+
+        # Build dynamic query for Exam Results
+        query = """
+            SELECT er.exam_type, er.term, s.name as subject_name, er.score, er.max_score, er.grade, er.remarks
+            FROM ExamResults er
+            JOIN Subjects s ON er.subject_id = s.id
+            WHERE er.student_id = %s
+        """
+        params = [student_id]
+        
+        if term:
+            query += " AND er.term = %s"
+            params.append(term)
+        if exam_type:
+            query += " AND er.exam_type = %s"
+            params.append(exam_type)
+            
+        query += " ORDER BY er.term DESC, er.exam_type ASC"
+        
+        cursor.execute(query, tuple(params))
+        exam_results = cursor.fetchall()
+
+        pdf_content = generate_exam_results_pdf(student, exam_results)
+
+        filename = f"exam_results_{student_id}"
+        if term: filename += f"_{term.replace(' ', '_')}"
+        if exam_type: filename += f"_{exam_type.replace(' ', '_')}"
+
+        return Response(
+            pdf_content,
+            mimetype="application/pdf",
+            headers={"Content-disposition": f"attachment; filename={filename}.pdf"}
+        )
+    except Exception as e:
+        logger.exception("Error generating results PDF: %s", e)
+        flash("Could not generate PDF.", "error")
+        return redirect(url_for("student.student_dashboard"))
     finally:
         if conn:
             conn.close()

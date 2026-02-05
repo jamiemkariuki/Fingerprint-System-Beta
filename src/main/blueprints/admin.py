@@ -98,13 +98,26 @@ def admin_dashboard():
 
         # Fetch Teacher Subject Assignments
         cursor.execute("""
-            SELECT tsa.id, t.name as teacher_name, t.id as teacher_id, s.name as subject_name, tsa.class
+            SELECT tsa.id, te.name as teacher_name, s.name as subject_name, tsa.class, tsa.teacher_id, tsa.subject_id
             FROM TeacherSubjectAssignments tsa
-            JOIN Teachers t ON tsa.teacher_id = t.id
+            JOIN Teachers te ON tsa.teacher_id = te.id
             JOIN Subjects s ON tsa.subject_id = s.id
-            ORDER BY t.name, tsa.class, s.name
+            ORDER BY te.name
         """)
         teacher_assignments = cursor.fetchall()
+
+        # Fetch Exam Results
+        cursor.execute("""
+            SELECT er.id, u.name as student_name, s.name as subject_name, te.name as teacher_name, 
+                   er.exam_type, er.term, er.score, er.max_score, er.grade, er.remarks, 
+                   er.student_id, er.subject_id, er.teacher_id
+            FROM ExamResults er
+            JOIN Users u ON er.student_id = u.id
+            JOIN Subjects s ON er.subject_id = s.id
+            LEFT JOIN Teachers te ON er.teacher_id = te.id
+            ORDER BY u.name, er.term, er.exam_type
+        """)
+        exam_results = cursor.fetchall()
 
         return render_template(
             "admin_dashboard.html",
@@ -117,6 +130,7 @@ def admin_dashboard():
             audit_links=audit_links,
             timetables=timetables,
             teacher_assignments=teacher_assignments,
+            exam_results=exam_results,
             send_days=send_days,
             listener_enabled=listener_enabled,
             student_count=student_count,
@@ -759,3 +773,56 @@ def unassign_teacher_subject(assignment_id):
             conn.close()
 
     return redirect(url_for("admin.admin_dashboard"))
+
+@admin_bp.route('/manage_exam_results', methods=['POST'])
+def manage_exam_results():
+    if "admin_id" not in session and "teacher_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    action = request.form.get("action")
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        if action == "add" or action == "update":
+            student_id = request.form.get("student_id")
+            subject_id = request.form.get("subject_id")
+            teacher_id = request.form.get("teacher_id") or None
+            exam_type = request.form.get("exam_type")
+            term = request.form.get("term")
+            score = request.form.get("score")
+            max_score = request.form.get("max_score", 100)
+            grade = request.form.get("grade")
+            remarks = request.form.get("remarks")
+
+            if action == "add":
+                cursor.execute("""
+                    INSERT INTO ExamResults (student_id, subject_id, teacher_id, exam_type, term, score, max_score, grade, remarks)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (student_id, subject_id, teacher_id, exam_type, term, score, max_score, grade, remarks))
+            else:
+                res_id = request.form.get("result_id")
+                cursor.execute("""
+                    UPDATE ExamResults 
+                    SET student_id=%s, subject_id=%s, teacher_id=%s, exam_type=%s, term=%s, score=%s, max_score=%s, grade=%s, remarks=%s
+                    WHERE id=%s
+                """, (student_id, subject_id, teacher_id, exam_type, term, score, max_score, grade, remarks, res_id))
+            
+            conn.commit()
+            flash(f"Exam result {'added' if action == 'add' else 'updated'} successfully.", "success")
+
+        elif action == "delete":
+            res_id = request.form.get("result_id")
+            cursor.execute("DELETE FROM ExamResults WHERE id = %s", (res_id,))
+            conn.commit()
+            flash("Exam result deleted successfully.", "success")
+
+    except mysql.connector.Error as e:
+        logger.exception("Error managing exam results: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(request.referrer or url_for("admin.admin_dashboard"))

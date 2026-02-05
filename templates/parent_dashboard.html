@@ -119,7 +119,70 @@
                 {% endif %}
             </div>
 
-            <div style="margin-top: 15px;">
+            <div style="margin-top: 20px;">
+                <h5>Exam Results</h5>
+                {% if child.results %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Term - Type</th>
+                            <th>Score</th>
+                            <th>Grade</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for res in child.results %}
+                        <tr>
+                            <td style="font-weight: bold;">{{ res.subject_name }}</td>
+                            <td>{{ res.term }} - {{ res.exam_type }}</td>
+                            <td>{{ res.score }} / {{ res.max_score }}</td>
+                            <td><strong>{{ res.grade or '-' }}</strong></td>
+                            <td><small>{{ res.remarks or '-' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #777;">No exam results found for this child yet.</p>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <div>
+                    <label style="display: block; font-size: 0.8em; margin-bottom: 2px;">Filter Term</label>
+                    <select id="filter_term_{{ child.id }}" class="btn-small"
+                        style="background: white; border: 1px solid #ddd; color: #333;"
+                        onchange="updateParentDownloadLink({{ child.id }})">
+                        <option value="">All Terms</option>
+                        {% set terms = [] %}
+                        {% for res in child.results %}
+                        {% if res.term not in terms %}
+                        {% set _ = terms.append(res.term) %}
+                        <option value="{{ res.term }}">{{ res.term }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.8em; margin-bottom: 2px;">Filter Type</label>
+                    <select id="filter_type_{{ child.id }}" class="btn-small"
+                        style="background: white; border: 1px solid #ddd; color: #333;"
+                        onchange="updateParentDownloadLink({{ child.id }})">
+                        <option value="">All Types</option>
+                        {% set types = [] %}
+                        {% for res in child.results %}
+                        {% if res.exam_type not in types %}
+                        {% set _ = types.append(res.exam_type) %}
+                        <option value="{{ res.exam_type }}">{{ res.exam_type }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <a href="{{ url_for('parent.child_results_pdf', student_id=child.id) }}"
+                    id="download_link_{{ child.id }}" class="btn btn-small" target="_blank"
+                    style="background-color: #2c3e50;">Download Exam Results (PDF)</a>
                 <a href="{{ url_for('teacher.student_attendance_pdf', student_id=child.id) }}" class="btn btn-small"
                     target="_blank">Download Attendance Report (PDF)</a>
                 <a href="{{ url_for('parent.child_audit_pdf', student_id=child.id) }}" class="btn btn-small"
@@ -128,6 +191,21 @@
         </div>
         {% endfor %}
     </div>
+
+    <script>
+        function updateParentDownloadLink(studentId) {
+            const term = document.getElementById('filter_term_' + studentId).value;
+            const type = document.getElementById('filter_type_' + studentId).value;
+            let url = "{{ url_for('parent.child_results_pdf', student_id=0) }}".replace('/0', '/' + studentId);
+            const params = [];
+            if (term) params.push("term=" + encodeURIComponent(term));
+            if (type) params.push("exam_type=" + encodeURIComponent(type));
+            if (params.length > 0) {
+                url += (url.includes('?') ? '&' : '?') + params.join("&");
+            }
+            document.getElementById('download_link_' + studentId).href = url;
+        }
+    </script>
     {% else %}
     <div class="card">
         <p style="text-align: center; color: #777;">No children linked to your account yet. Please contact your school

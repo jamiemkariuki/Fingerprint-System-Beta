@@ -8,6 +8,7 @@
     <button class="tab-link" onclick="openTab(event, 'Students')">Students</button>
     <button class="tab-link" onclick="openTab(event, 'Parents')">Parents</button>
     <button class="tab-link" onclick="openTab(event, 'Timetable')">Timetable</button>
+    <button class="tab-link" onclick="openTab(event, 'ExamResults')">Exam Results</button>
 </div>
 
 <div id="Overview" class="tab-content active">
@@ -413,6 +414,215 @@
     </div>
 </div>
 
+<div id="ExamResults" class="tab-content">
+    <div class="card">
+        <h3>Exam Results Management</h3>
+        <p class="small text-muted">Enter exam scores for students in your class or for subjects you teach.</p>
+        <form method="post" action="{{ url_for('teacher.manage_exam_results') }}" id="exam_result_form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="add" id="er_action">
+            <input type="hidden" name="result_id" value="" id="er_result_id">
+            <input type="hidden" name="teacher_id" value="{{ teacher.id }}" id="er_teacher_id">
+
+            <div class="grid">
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="er_student">Student</label>
+                    <select id="er_student" name="student_id" required>
+                        <option value="">-- Select Student --</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="er_subject">Subject</label>
+                    <select id="er_subject" name="subject_id" required>
+                        <option value="">-- Select Subject --</option>
+                        {% for s in subjects %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid" style="margin-top: 15px;">
+                <div style="flex: 1;">
+                    <label for="er_type">Exam Type</label>
+                    <input type="text" id="er_type" name="exam_type" placeholder="e.g. Midterm, Final" required>
+                </div>
+                <div style="flex: 1;">
+                    <label for="er_term">Term</label>
+                    <input type="text" id="er_term" name="term" placeholder="e.g. Term 1" required>
+                </div>
+            </div>
+
+            <div class="grid" style="margin-top: 15px;">
+                <div style="flex: 1;">
+                    <label for="er_score">Score</label>
+                    <input type="number" step="0.01" id="er_score" name="score" required>
+                </div>
+                <div style="flex: 1;">
+                    <label for="er_max">Max Score</label>
+                    <input type="number" step="0.01" id="er_max" name="max_score" value="100">
+                </div>
+                <div style="flex: 1;">
+                    <label for="er_grade">Grade</label>
+                    <input type="text" id="er_grade" name="grade" placeholder="e.g. A">
+                </div>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <label for="er_remarks">Remarks</label>
+                <textarea id="er_remarks" name="remarks" style="width: 100%; min-height: 80px;"></textarea>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" id="er_submit_btn">Add Result</button>
+                <button type="button" id="er_cancel_btn" style="display: none; background-color: #6c757d;"
+                    onclick="cancelEREdit()">Cancel Edit</button>
+            </div>
+        </form>
+
+        <h4 style="margin-top: 30px;">Generate Student Performance Report (PDF)</h4>
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+            <div>
+                <label for="report_student"
+                    style="display: block; font-size: 0.8em; margin-bottom: 2px;">Student</label>
+                <select id="report_student" class="btn-small"
+                    style="background: white; border: 1px solid #ddd; color: #333;"
+                    onchange="updateTeacherDownloadLink()">
+                    <option value="">-- Select Student --</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="report_term" style="display: block; font-size: 0.8em; margin-bottom: 2px;">Term</label>
+                <select id="report_term" class="btn-small"
+                    style="background: white; border: 1px solid #ddd; color: #333;"
+                    onchange="updateTeacherDownloadLink()">
+                    <option value="">All Terms</option>
+                    {% set terms = [] %}
+                    {% if exam_results %}
+                    {% for res in exam_results %}
+                    {% if res.term not in terms %}
+                    {% set _ = terms.append(res.term) %}
+                    <option value="{{ res.term }}">{{ res.term }}</option>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <div>
+                <label for="report_type" style="display: block; font-size: 0.8em; margin-bottom: 2px;">Exam Type</label>
+                <select id="report_type" class="btn-small"
+                    style="background: white; border: 1px solid #ddd; color: #333;"
+                    onchange="updateTeacherDownloadLink()">
+                    <option value="">All Types</option>
+                    {% set types = [] %}
+                    {% if exam_results %}
+                    {% for res in exam_results %}
+                    {% if res.exam_type not in types %}
+                    {% set _ = types.append(res.exam_type) %}
+                    <option value="{{ res.exam_type }}">{{ res.exam_type }}</option>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <a href="#" id="teacher_report_link" class="btn btn-small" target="_blank"
+                style="background-color: #2c3e50;" onclick="return checkStudentSelected()">Generate PDF Report</a>
+        </div>
+
+        <script>
+            function updateTeacherDownloadLink() {
+                const studentId = document.getElementById('report_student').value;
+                if (!studentId) {
+                    document.getElementById('teacher_report_link').href = "#";
+                    return;
+                }
+                const term = document.getElementById('report_term').value;
+                const type = document.getElementById('report_type').value;
+
+                let url = "{{ url_for('teacher.student_results_pdf', student_id=0) }}".replace('/0', '/' + studentId);
+                const params = [];
+                if (term) params.push("term=" + encodeURIComponent(term));
+                if (type) params.push("exam_type=" + encodeURIComponent(type));
+                if (params.length > 0) {
+                    url += (url.includes('?') ? '&' : '?') + params.join("&");
+                }
+                document.getElementById('teacher_report_link').href = url;
+            }
+
+            function checkStudentSelected() {
+                const studentId = document.getElementById('report_student').value;
+                if (!studentId) {
+                    alert("Please select a student first.");
+                    return false;
+                }
+                return true;
+            }
+        </script>
+
+        <h4 style="margin-top: 30px;">Authorized Exam Results</h4>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Subject</th>
+                        <th>Term - Type</th>
+                        <th>Score</th>
+                        <th>Grade</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if exam_results %}
+                    {% for res in exam_results %}
+                    <tr>
+                        <td>{{ res.student_name }}</td>
+                        <td>{{ res.subject_name }}</td>
+                        <td>{{ res.term }} - {{ res.exam_type }}</td>
+                        <td>{{ res.score }} / {{ res.max_score }}</td>
+                        <td>{{ res.grade or '-' }}</td>
+                        <td>
+                            <button type="button" class="btn btn-small" onclick="editExamResult(
+                                '{{ res.id }}', 
+                                '{{ res.student_id }}', 
+                                '{{ res.subject_id }}', 
+                                '{{ res.exam_type|escape }}', 
+                                '{{ res.term|escape }}', 
+                                '{{ res.score }}', 
+                                '{{ res.max_score }}', 
+                                '{{ res.grade|escape }}', 
+                                '{{ res.remarks|escape }}'
+                            )">Edit</button>
+                            <a href="{{ url_for('teacher.student_results_pdf', student_id=res.student_id) }}"
+                                class="btn btn-small" target="_blank" style="background-color: #2c3e50;">PDF</a>
+                            <form method="post" action="{{ url_for('teacher.manage_exam_results') }}"
+                                style="display:inline;" onsubmit="return confirm('Delete this result?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="result_id" value="{{ res.id }}">
+                                <button type="submit" class="btn btn-small btn-secondary">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center;">No exam results found for your authorized
+                            students/subjects.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <style>
     .admin-nav {
         display: flex;
@@ -503,12 +713,38 @@
         document.getElementById('Timetable').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function cancelTTExted() {
+    function cancelTTEdit() {
         document.getElementById('timetable-form').reset();
         document.getElementById('tt_id').value = '';
         document.getElementById('tt_action').value = 'add';
         document.getElementById('tt_submit_btn').innerText = 'Add Entry';
         document.getElementById('tt_cancel_btn').style.display = 'none';
+    }
+
+    function editExamResult(id, studentId, subjectId, type, term, score, maxScore, grade, remarks) {
+        document.getElementById('er_result_id').value = id;
+        document.getElementById('er_action').value = 'update';
+        document.getElementById('er_student').value = studentId;
+        document.getElementById('er_subject').value = subjectId;
+        document.getElementById('er_type').value = type;
+        document.getElementById('er_term').value = term;
+        document.getElementById('er_score').value = score;
+        document.getElementById('er_max').value = maxScore;
+        document.getElementById('er_grade').value = grade;
+        document.getElementById('er_remarks').value = remarks;
+
+        document.getElementById('er_submit_btn').innerText = 'Update Result';
+        document.getElementById('er_cancel_btn').style.display = 'inline-block';
+
+        document.getElementById('ExamResults').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEREdit() {
+        document.getElementById('exam_result_form').reset();
+        document.getElementById('er_result_id').value = '';
+        document.getElementById('er_action').value = 'add';
+        document.getElementById('er_submit_btn').innerText = 'Add Result';
+        document.getElementById('er_cancel_btn').style.display = 'none';
     }
 </script>
 

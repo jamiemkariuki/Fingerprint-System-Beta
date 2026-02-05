@@ -155,6 +155,25 @@ CREATE TABLE IF NOT EXISTS `Settings` (
   UNIQUE KEY uniq_setting_key (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Exam Results Table
+CREATE TABLE IF NOT EXISTS `ExamResults` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `student_id` INT UNSIGNED NOT NULL,
+  `subject_id` INT UNSIGNED NOT NULL,
+  `teacher_id` INT UNSIGNED,
+  `exam_type` VARCHAR(50) NOT NULL, -- e.g., 'Midterm', 'Final', 'Quiz'
+  `term` VARCHAR(20) NOT NULL,      -- e.g., 'Term 1', 'Term 2'
+  `score` DECIMAL(5,2) NOT NULL,
+  `max_score` DECIMAL(5,2) DEFAULT 100.00,
+  `grade` VARCHAR(5) DEFAULT NULL,
+  `remarks` TEXT,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`student_id`) REFERENCES `Users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`subject_id`) REFERENCES `Subjects`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`teacher_id`) REFERENCES `Teachers`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Insert defaults
 INSERT INTO Settings (`key`, `value`)
 VALUES 

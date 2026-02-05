@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, Response
 from datetime import datetime
 import bcrypt
 import mysql.connector
 from ..database import get_db
 from ..utils.common import _get_student_attendance_status
-from ..utils.pdf import generate_attendance_pdf
+from ..utils.pdf import generate_attendance_pdf, generate_exam_results_pdf
 import logging
 
 logger = logging.getLogger(__name__)
@@ -100,6 +100,26 @@ def teacher_dashboard():
         """, (teacher['class'], teacher_id, teacher_id))
         enrollment_links = cursor.fetchall()
 
+        # Get Exam Results this teacher can manage
+        cursor.execute("""
+            SELECT er.id, u.name as student_name, s.name as subject_name, te.name as teacher_name, 
+                   er.exam_type, er.term, er.score, er.max_score, er.grade, er.remarks, 
+                   er.student_id, er.subject_id, er.teacher_id
+            FROM ExamResults er
+            JOIN Users u ON er.student_id = u.id
+            JOIN Subjects s ON er.subject_id = s.id
+            LEFT JOIN Teachers te ON er.teacher_id = te.id
+            WHERE 
+                u.class = %s -- Home Class
+                OR er.subject_id IN (SELECT subject_id FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+                OR u.class IN (SELECT class FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+            ORDER BY u.name, er.term, er.exam_type
+        """, (teacher['class'], teacher_id, teacher_id))
+        exam_results = cursor.fetchall()
+
+        cursor.execute("SELECT id, name FROM Teachers ORDER BY name")
+        teachers_list = cursor.fetchall()
+
         return render_template("teacher_dashboard.html",
                                teacher=teacher,
                                users=users,
@@ -107,7 +127,9 @@ def teacher_dashboard():
                                subjects=all_subjects,
                                audit_links=audit_links,
                                enrollment_links=enrollment_links,
-                               timetables=timetables)
+                               timetables=timetables,
+                               teachers=teachers_list,
+                               exam_results=exam_results)
 
     except mysql.connector.Error as e:
         logger.exception("MySQL Error on teacher dashboard: %s", e)
@@ -551,6 +573,185 @@ def manage_timetable():
         conn.commit()
     except mysql.connector.Error as e:
         logger.exception("MySQL Error managing timetable: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("teacher.teacher_dashboard"))
+
+
+@teacher_bp.route('/student_results_pdf/<int:student_id>')
+def student_results_pdf(student_id):
+    if "teacher_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    teacher_id = session["teacher_id"]
+    term = request.args.get("term")
+    exam_type = request.args.get("exam_type")
+    
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get teacher info for authority check
+        cursor.execute("SELECT class FROM Teachers WHERE id = %s", (teacher_id,))
+        teacher = cursor.fetchone()
+
+        # Authority Check (Same as manage_exam_results)
+        cursor.execute("SELECT class FROM Users WHERE id = %s", (student_id,))
+        student_data = cursor.fetchone()
+        if not student_data:
+            flash("Student not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cursor.execute("""
+            SELECT id FROM Teachers WHERE id = %s AND class = %s
+            UNION
+            SELECT teacher_id FROM TeacherSubjectAssignments WHERE teacher_id = %s AND class = %s
+            UNION
+            SELECT teacher_id FROM TeacherSubjectAssignments WHERE teacher_id = %s AND EXISTS (
+                SELECT 1 FROM ExamResults WHERE student_id = %s AND subject_id = TeacherSubjectAssignments.subject_id
+            )
+        """, (teacher_id, student_data['class'], teacher_id, student_data['class'], teacher_id, student_id))
+        
+        if not cursor.fetchone():
+            flash("You are not authorized to view results for this student.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Build dynamic query for Exam Results
+        query = """
+            SELECT er.exam_type, er.term, s.name as subject_name, er.score, er.max_score, er.grade, er.remarks
+            FROM ExamResults er
+            JOIN Subjects s ON er.subject_id = s.id
+            WHERE er.student_id = %s
+        """
+        params = [student_id]
+        
+        if term:
+            query += " AND er.term = %s"
+            params.append(term)
+        if exam_type:
+            query += " AND er.exam_type = %s"
+            params.append(exam_type)
+            
+        query += " ORDER BY er.term DESC, er.exam_type ASC"
+        
+        cursor.execute(query, tuple(params))
+        exam_results = cursor.fetchall()
+
+        # Student info full
+        cursor.execute("SELECT * FROM Users WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+
+        pdf_content = generate_exam_results_pdf(student, exam_results)
+
+        filename = f"results_{student['name'].replace(' ', '_')}"
+        if term: filename += f"_{term.replace(' ', '_')}"
+        if exam_type: filename += f"_{exam_type.replace(' ', '_')}"
+
+        return Response(
+            pdf_content,
+            mimetype="application/pdf",
+            headers={"Content-disposition": f"attachment; filename={filename}.pdf"}
+        )
+    except Exception as e:
+        logger.exception("Error generating teacher student results PDF: %s", e)
+        flash("Could not generate PDF.", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@teacher_bp.route('/manage_exam_results', methods=['POST'])
+def manage_exam_results():
+    if "teacher_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    teacher_id = session["teacher_id"]
+    action = request.form.get("action")
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get teacher info for authority check
+        cursor.execute("SELECT class FROM Teachers WHERE id = %s", (teacher_id,))
+        teacher = cursor.fetchone()
+
+        if action == "add" or action == "update":
+            student_id = request.form.get("student_id")
+            subject_id = request.form.get("subject_id")
+            res_teacher_id = request.form.get("teacher_id") or teacher_id
+            exam_type = request.form.get("exam_type")
+            term = request.form.get("term")
+            score = request.form.get("score")
+            max_score = request.form.get("max_score", 100)
+            grade = request.form.get("grade")
+            remarks = request.form.get("remarks")
+
+            # Authority Check
+            cursor.execute("SELECT class FROM Users WHERE id = %s", (student_id,))
+            student = cursor.fetchone()
+            if not student:
+                flash("Student not found.", "error")
+                return redirect(url_for("teacher.teacher_dashboard"))
+
+            cursor.execute("""
+                SELECT id FROM Teachers WHERE id = %s AND class = %s
+                UNION
+                SELECT teacher_id FROM TeacherSubjectAssignments WHERE teacher_id = %s AND class = %s
+                UNION
+                SELECT teacher_id FROM TeacherSubjectAssignments WHERE teacher_id = %s AND subject_id = %s
+            """, (teacher_id, student['class'], teacher_id, student['class'], teacher_id, subject_id))
+            
+            if not cursor.fetchone():
+                flash("You are not authorized to manage results for this student/subject combination.", "error")
+                return redirect(url_for("teacher.teacher_dashboard"))
+
+            if action == "add":
+                cursor.execute("""
+                    INSERT INTO ExamResults (student_id, subject_id, teacher_id, exam_type, term, score, max_score, grade, remarks)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (student_id, subject_id, res_teacher_id, exam_type, term, score, max_score, grade, remarks))
+            else:
+                res_id = request.form.get("result_id")
+                cursor.execute("SELECT id FROM ExamResults WHERE id = %s", (res_id,))
+                if not cursor.fetchone():
+                    flash("Result record not found.", "error")
+                    return redirect(url_for("teacher.teacher_dashboard"))
+
+                cursor.execute("""
+                    UPDATE ExamResults 
+                    SET student_id=%s, subject_id=%s, teacher_id=%s, exam_type=%s, term=%s, score=%s, max_score=%s, grade=%s, remarks=%s
+                    WHERE id=%s
+                """, (student_id, subject_id, res_teacher_id, exam_type, term, score, max_score, grade, remarks, res_id))
+            
+            conn.commit()
+            flash(f"Exam result {'added' if action == 'add' else 'updated'} successfully.", "success")
+
+        elif action == "delete":
+            res_id = request.form.get("result_id")
+            cursor.execute("""
+                SELECT er.id FROM ExamResults er
+                JOIN Users u ON er.student_id = u.id
+                WHERE er.id = %s AND (
+                    u.class = %s 
+                    OR er.subject_id IN (SELECT subject_id FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+                    OR u.class IN (SELECT class FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+                )
+            """, (res_id, teacher['class'], teacher_id, teacher_id))
+            
+            if cursor.fetchone():
+                cursor.execute("DELETE FROM ExamResults WHERE id = %s", (res_id,))
+                conn.commit()
+                flash("Exam result deleted successfully.", "success")
+            else:
+                flash("Unauthorized to delete this record.", "error")
+
+    except mysql.connector.Error as e:
+        logger.exception("Error managing exam results: %s", e)
         flash(f"Database error: {e}", "error")
     finally:
         if conn:
