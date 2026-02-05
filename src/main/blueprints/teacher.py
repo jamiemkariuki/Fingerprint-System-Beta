@@ -28,9 +28,21 @@ def teacher_dashboard():
         cursor.execute("SELECT * FROM Teachers WHERE id = %s", (teacher_id,))
         teacher = cursor.fetchone()
 
-        # Get students in teacher's class
-        cursor.execute("SELECT * FROM Users WHERE class = %s", (teacher['class'],))
-        users = cursor.fetchall()
+        # Get classes this teacher is assigned to for specific subjects
+        cursor.execute("SELECT tsa.subject_id, s.name as subject_name, tsa.class FROM TeacherSubjectAssignments tsa JOIN Subjects s ON tsa.subject_id = s.id WHERE tsa.teacher_id = %s", (teacher_id,))
+        teacher_assignments = cursor.fetchall()
+        assigned_classes = list(set([row['class'] for row in teacher_assignments]))
+        
+        # Combine with home class
+        all_relevant_classes = list(set([teacher['class']] + assigned_classes))
+
+        # GLOBAL SUBJECT AUTHORITY: If they teach a subject, they can link it to ANY student.
+        # So we show all students if they have at least one assignment.
+        if teacher_assignments or teacher['class']:
+            cursor.execute("SELECT * FROM Users ORDER BY name")
+            users = cursor.fetchall()
+        else:
+            users = []
 
         for user in users:
             user["status"] = _get_student_attendance_status(cursor, user["id"], today)
@@ -39,27 +51,63 @@ def teacher_dashboard():
         cursor.execute("SELECT * FROM Parents ORDER BY name")
         parents = cursor.fetchall()
 
-        # Get subjects
+        # Get ALL subjects (for the "Assign Subject to Student" form)
         cursor.execute("SELECT * FROM Subjects ORDER BY name")
-        subjects = cursor.fetchall()
+        all_subjects = cursor.fetchall()
 
-        # Get audit links for teacher's class
+        # Build query for audits this teacher can manage
+        # 1. Global Subjects: Any student taking a subject this teacher is assigned to teach.
+        # 2. Class Authority: Any student in a class the teacher is authorized for.
         cursor.execute("""
             SELECT sa.id, u.name as student_name, s.name as subject_name, sa.status, sa.notes
             FROM StudentAudit sa
             JOIN Users u ON sa.student_id = u.id
             JOIN Subjects s ON sa.subject_id = s.id
-            WHERE u.class = %s
+            WHERE 
+                u.class = %s -- Home Class
+                OR sa.subject_id IN (SELECT subject_id FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+                OR u.class IN (SELECT class FROM TeacherSubjectAssignments WHERE teacher_id = %s)
             ORDER BY u.name
-        """, (teacher['class'],))
+        """, (teacher['class'], teacher_id, teacher_id))
         audit_links = cursor.fetchall()
+
+        # Get timetable for all relevant classes
+        if all_relevant_classes:
+            placeholders = ','.join(['%s'] * len(all_relevant_classes))
+            cursor.execute(f"""
+                SELECT t.id, t.class, s.name as subject_name, t.day_of_week, t.start_time, t.end_time, t.subject_id, t.teacher_id, te.name as teacher_name
+                FROM Timetable t
+                JOIN Subjects s ON t.subject_id = s.id
+                LEFT JOIN Teachers te ON t.teacher_id = te.id
+                WHERE t.class IN ({placeholders})
+                ORDER BY t.class, FIELD(t.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'), t.start_time
+            """, tuple(all_relevant_classes))
+            timetables = cursor.fetchall()
+        else:
+            timetables = []
+
+        # Get enrollment records (StudentSubjects) for students this teacher can manage
+        cursor.execute("""
+            SELECT ss.id, u.name as student_name, s.name as subject_name, u.id as student_id, s.id as subject_id
+            FROM StudentSubjects ss
+            JOIN Users u ON ss.student_id = u.id
+            JOIN Subjects s ON ss.subject_id = s.id
+            WHERE 
+                u.class = %s -- Home Class
+                OR ss.subject_id IN (SELECT subject_id FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+                OR u.class IN (SELECT class FROM TeacherSubjectAssignments WHERE teacher_id = %s)
+            ORDER BY u.name
+        """, (teacher['class'], teacher_id, teacher_id))
+        enrollment_links = cursor.fetchall()
 
         return render_template("teacher_dashboard.html",
                                teacher=teacher,
                                users=users,
                                parents=parents,
-                               subjects=subjects,
-                               audit_links=audit_links)
+                               subjects=all_subjects,
+                               audit_links=audit_links,
+                               enrollment_links=enrollment_links,
+                               timetables=timetables)
 
     except mysql.connector.Error as e:
         logger.exception("MySQL Error on teacher dashboard: %s", e)
@@ -209,6 +257,7 @@ def update_audit_status():
     if "teacher_id" not in session:
         return redirect(url_for("teacher.teacher_login"))
     
+    teacher_id = session["teacher_id"]
     audit_id = request.form.get("audit_id")
     status = request.form.get("status")
     notes = request.form.get("notes", "")
@@ -220,7 +269,40 @@ def update_audit_status():
     conn = None
     try:
         conn = get_db()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
+
+        # SECURITY CHECK: Verify teacher has authority over this audit
+        # Must be in their home class OR assigned to this subject+class
+        cursor.execute("""
+            SELECT sa.subject_id, u.class as student_class, t.class as teacher_home_class
+            FROM StudentAudit sa
+            JOIN Users u ON sa.student_id = u.id
+            CROSS JOIN Teachers t ON t.id = %s
+            WHERE sa.id = %s
+        """, (teacher_id, audit_id))
+        audit_info = cursor.fetchone()
+
+        if not audit_info:
+            flash("Audit record not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        authorized = False
+        # GLOBAL SUBJECT AUTHORITY: Can update if it's "their subject" anywhere 
+        # OR if they have class-based authority over the student (already checked by existing logic flow)
+        cursor.execute("""
+            SELECT id FROM Teachers WHERE id = %s AND class = %s
+            UNION
+            SELECT teacher_id FROM TeacherSubjectAssignments WHERE teacher_id = %s AND class = %s
+            UNION
+            SELECT teacher_id FROM TeacherSubjectAssignments WHERE teacher_id = %s AND subject_id = %s
+        """, (teacher_id, audit_info['student_class'], teacher_id, audit_info['student_class'], teacher_id, audit_info['subject_id']))
+        if cursor.fetchone():
+            authorized = True
+
+        if not authorized:
+            flash("You are not authorized to update this clearance status. You must be explicitly assigned to this subject and class.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
         cursor.execute(
             "UPDATE StudentAudit SET status = %s, notes = %s WHERE id = %s",
             (status, notes, audit_id)
@@ -235,6 +317,59 @@ def update_audit_status():
             conn.close()
     
     return redirect(url_for("teacher.teacher_dashboard"))
+
+@teacher_bp.route('/delete_audit', methods=['POST'])
+def delete_audit():
+    if "teacher_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+    
+    teacher_id = session["teacher_id"]
+    audit_id = request.form.get("audit_id")
+
+    if not audit_id:
+        flash("Audit ID is required.", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # SECURITY CHECK: Verify teacher has authority over this audit
+        cursor.execute("""
+            SELECT sa.subject_id, u.class as student_class
+            FROM StudentAudit sa
+            JOIN Users u ON sa.student_id = u.id
+            WHERE sa.id = %s
+        """, (audit_id,))
+        audit_info = cursor.fetchone()
+
+        if not audit_info:
+            flash("Audit record not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Strict check: teacher must be assigned to this subject+class
+        cursor.execute("""
+            SELECT id FROM TeacherSubjectAssignments
+            WHERE teacher_id = %s AND subject_id = %s AND class = %s
+        """, (teacher_id, audit_info['subject_id'], audit_info['student_class']))
+        
+        if not cursor.fetchone():
+            flash("You are not authorized to delete this clearance record. You must be explicitly assigned to this subject and class.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cursor.execute("DELETE FROM StudentAudit WHERE id = %s", (audit_id,))
+        conn.commit()
+        flash("Audit record deleted successfully!", "success")
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error deleting audit: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+    
+    return redirect(url_for("teacher.teacher_dashboard"))
+
 
 @teacher_bp.route('/student_attendance_pdf/<int:student_id>')
 def student_attendance_pdf(student_id):
@@ -278,3 +413,147 @@ def student_attendance_pdf(student_id):
     finally:
         if conn:
             conn.close()
+
+@teacher_bp.route('/student_audit_pdf/<int:student_id>')
+def student_audit_pdf(student_id):
+    if "teacher_id" not in session and "admin_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get student info
+        cursor.execute("SELECT * FROM Users WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+        if not student:
+            flash("Student not found", "error")
+            return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
+
+        # SECURITY CHECK FOR TEACHERS
+        if "teacher_id" in session:
+            teacher_id = session["teacher_id"]
+            cursor.execute("SELECT class FROM Teachers WHERE id = %s", (teacher_id,))
+            teacher = cursor.fetchone()
+            
+            # Use home class or assigned classes check
+            cursor.execute("SELECT class FROM TeacherSubjectAssignments WHERE teacher_id = %s", (teacher_id,))
+            assigned_classes = [row['class'] for row in cursor.fetchall()]
+            
+            if student['class'] != teacher['class'] and student['class'] not in assigned_classes:
+                flash("You are not authorized to view this student's audit report.", "error")
+                return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
+
+        # Get audit records for the student
+        cursor.execute("""
+            SELECT s.name as subject_name, sa.status, sa.notes
+            FROM StudentAudit sa
+            JOIN Subjects s ON sa.subject_id = s.id
+            WHERE sa.student_id = %s
+            ORDER BY s.name
+        """, (student_id,))
+        audit_records = cursor.fetchall()
+
+        from ..utils.pdf import generate_audit_report_pdf
+        pdf_data = generate_audit_report_pdf(student, audit_records)
+
+        from flask import Response
+        response = Response(pdf_data, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'attachment; filename=student_{student_id}_clearance.pdf'
+        return response
+
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error generating audit PDF: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
+    finally:
+        if conn:
+            conn.close()
+
+@teacher_bp.route('/manage_timetable', methods=['POST'])
+def manage_timetable():
+    if "teacher_id" not in session:
+        return redirect(url_for("teacher.teacher_login"))
+
+    # Verify teacher class
+    teacher_class = None
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT class FROM Teachers WHERE id = %s", (session["teacher_id"],))
+        result = cursor.fetchone()
+        if result:
+            teacher_class = result['class']
+    except mysql.connector.Error as e:
+        logger.error(f"Error getting teacher class: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    if not teacher_class:
+        flash("Could not determine your class.", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+
+    action = request.form.get("action", "add")
+    
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        if action == "add":
+            subject_id = request.form.get("subject_id")
+            teacher_id = request.form.get("teacher_id")
+            day_of_week = request.form.get("day_of_week")
+            start_time = request.form.get("start_time")
+            end_time = request.form.get("end_time")
+
+            if subject_id and day_of_week and start_time and end_time:
+                t_id = teacher_id if teacher_id and teacher_id.strip() else None
+                cursor.execute(
+                    "INSERT INTO Timetable (class, subject_id, teacher_id, day_of_week, start_time, end_time) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (teacher_class, subject_id, t_id, day_of_week, start_time, end_time)
+                )
+                flash("Timetable entry added successfully.", "success")
+            else:
+                flash("Missing required fields.", "error")
+
+        elif action == "update":
+            timetable_id = request.form.get("timetable_id")
+            subject_id = request.form.get("subject_id")
+            teacher_id = request.form.get("teacher_id")
+            day_of_week = request.form.get("day_of_week")
+            start_time = request.form.get("start_time")
+            end_time = request.form.get("end_time")
+
+            if timetable_id and subject_id and day_of_week and start_time and end_time:
+                t_id = teacher_id if teacher_id and teacher_id.strip() else None
+                cursor.execute("""
+                    UPDATE Timetable 
+                    SET subject_id = %s, teacher_id = %s, day_of_week = %s, start_time = %s, end_time = %s
+                    WHERE id = %s AND class = %s
+                """, (subject_id, t_id, day_of_week, start_time, end_time, timetable_id, teacher_class))
+                flash("Timetable entry updated successfully.", "success")
+            else:
+                flash("Missing required fields for update.", "error")
+
+        elif action == "delete":
+            timetable_id = request.form.get("timetable_id")
+            if timetable_id:
+                cursor.execute("DELETE FROM Timetable WHERE id = %s AND class = %s", (timetable_id, teacher_class))
+                if cursor.rowcount > 0:
+                    flash("Timetable entry deleted.", "success")
+                else:
+                    flash("Could not delete entry.", "error")
+
+        conn.commit()
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error managing timetable: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for("teacher.teacher_dashboard"))

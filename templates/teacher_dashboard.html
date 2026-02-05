@@ -3,9 +3,11 @@
 
 <div class="admin-nav">
     <button class="tab-link active" onclick="openTab(event, 'Overview')">Overview</button>
-    <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing</button>
+    <button class="tab-link" onclick="openTab(event, 'Enrollment')">Subject Enrollment</button>
+    <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing Clearance</button>
     <button class="tab-link" onclick="openTab(event, 'Students')">Students</button>
     <button class="tab-link" onclick="openTab(event, 'Parents')">Parents</button>
+    <button class="tab-link" onclick="openTab(event, 'Timetable')">Timetable</button>
 </div>
 
 <div id="Overview" class="tab-content active">
@@ -20,6 +22,74 @@
             <li>{{ u.name }} - {{ u.status }}</li>
             {% endfor %}
         </ul>
+    </div>
+</div>
+
+<div id="Enrollment" class="tab-content">
+    <div class="card">
+        <h3>Link Subject to Student (Enrollment)</h3>
+        <p class="small text-muted">Link a student to a subject to allow clearance auditing. Unlinking will remove both
+            the enrollment and any existing audit record.</p>
+        <form method="post" action="{{ url_for('admin.link_subject') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="enroll_student">Student</label>
+                    <select id="enroll_student" name="student_id" required>
+                        <option value="">-- Select Student --</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="enroll_subject">Subject</label>
+                    <select id="enroll_subject" name="subject_id" required>
+                        <option value="">-- Select Subject --</option>
+                        {% for s in subjects %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" style="padding: 10px 20px;">Link Subject</button>
+            </div>
+        </form>
+
+        <h4 style="margin-top: 30px;">Current Subject Links</h4>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Subject</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if enrollment_links %}
+                    {% for enroll in enrollment_links %}
+                    <tr>
+                        <td>{{ enroll.student_name }}</td>
+                        <td>{{ enroll.subject_name }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin.unlink_subject') }}"
+                                onsubmit="return confirm('Unlink this subject? This will also delete any existing clearance audit.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <input type="hidden" name="student_id" value="{{ enroll.student_id }}">
+                                <input type="hidden" name="subject_id" value="{{ enroll.subject_id }}">
+                                <button type="submit" class="btn btn-small btn-secondary">Unlink</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center;">No subject links found.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -68,6 +138,13 @@
                                     style="width: 100px; padding: 2px;">
                                 <button type="submit" class="btn btn-small">Update</button>
                             </form>
+                            <form method="post" action="{{ url_for('teacher.delete_audit') }}" style="display: inline;"
+                                onsubmit="return confirm('Are you sure you want to delete this clearance record?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <input type="hidden" name="audit_id" value="{{ audit.id }}">
+                                <button type="submit" class="btn btn-small btn-secondary"
+                                    style="background-color: #dc3545;">Delete</button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
@@ -82,25 +159,53 @@
     </div>
 
     <div class="card">
-        <h3>Assign Subject to Student</h3>
-        <form method="post" action="{{ url_for('admin.assign_subject') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <label for="t_audit_student_id">Student</label>
-            <select id="t_audit_student_id" name="student_id" required>
-                <option value="">-- Select Student --</option>
-                {% for u in users %}
-                <option value="{{ u.id }}">{{ u.name }} ({{ u.class }})</option>
-                {% endfor %}
-            </select>
-            <label for="t_audit_subject_id">Subject</label>
-            <select id="t_audit_subject_id" name="subject_id" required>
-                <option value="">-- Select Subject --</option>
-                {% for s in subjects %}
-                <option value="{{ s.id }}">{{ s.name }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit">Assign Subject</button>
-        </form>
+        <h3>Available for Auditing</h3>
+        <p class="small text-muted">The following students are enrolled in subjects but have not had their clearance
+            audit initialized yet.</p>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Subject</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set enrollment_with_audit = [] %}
+                    {% for audit in audit_links %}
+                    {% set _ = enrollment_with_audit.append(audit.student_name ~ '|' ~ audit.subject_name) %}
+                    {% endfor %}
+
+                    {% set available_count = 0 %}
+                    {% for enroll in enrollment_links %}
+                    {% set key = enroll.student_name ~ '|' ~ enroll.subject_name %}
+                    {% if key not in enrollment_with_audit %}
+                    {% set available_count = available_count + 1 %}
+                    <tr>
+                        <td>{{ enroll.student_name }}</td>
+                        <td>{{ enroll.subject_name }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin.create_audit') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <input type="hidden" name="student_id" value="{{ enroll.student_id }}">
+                                <input type="hidden" name="subject_id" value="{{ enroll.subject_id }}">
+                                <button type="submit" class="btn btn-small">Initialize Audit</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if available_count == 0 %}
+                    <tr>
+                        <td colspan="3" style="text-align: center;">No new subjects available for auditing. Ensure
+                            students are "Linked" in the Enrollment tab.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -142,12 +247,107 @@
                     <td>{{ u.status }}</td>
                     <td>
                         <a href="{{ url_for('teacher.student_attendance_pdf', student_id=u.id) }}" class="btn btn-small"
-                            target="_blank">Download PDF</a>
+                            target="_blank">Attendance PDF</a>
+                        <a href="{{ url_for('teacher.student_audit_pdf', student_id=u.id) }}" class="btn btn-small"
+                            target="_blank">Clearance PDF</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% endif %}
+    </div>
+</div>
+
+<div id="Timetable" class="tab-content">
+    <div class="card">
+        <h3>Manage Class Timetable ({{ teacher.class }})</h3>
+        <form id="timetable-form" method="post" action="{{ url_for('teacher.manage_timetable') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" id="tt_action" name="action" value="add">
+            <input type="hidden" id="tt_id" name="timetable_id" value="">
+
+            <label for="tt_subject">Subject</label>
+            <select id="tt_subject" name="subject_id" required>
+                <option value="">-- Select Subject --</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="tt_teacher">Teacher (Optional)</label>
+            <select id="tt_teacher" name="teacher_id">
+                <option value="">-- No Teacher Assigned --</option>
+                {% for t in teachers %}
+                <option value="{{ t.id }}">{{ t.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="tt_day">Day</label>
+            <select id="tt_day" name="day_of_week" required>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+                <option value="Sunday">Sunday</option>
+            </select>
+
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label for="tt_start">Start Time</label>
+                    <input type="time" id="tt_start" name="start_time" required>
+                </div>
+                <div style="flex: 1;">
+                    <label for="tt_end">End Time</label>
+                    <input type="time" id="tt_end" name="end_time" required>
+                </div>
+            </div>
+
+            <button type="submit" id="tt_submit_btn">Add Entry</button>
+            <button type="button" id="tt_cancel_btn" style="display: none; background-color: grey;"
+                onclick="cancelTTExted()">Cancel Edit</button>
+        </form>
+        </form>
+
+        <h4>Current Timetable</h4>
+        {% if timetables %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Subject</th>
+                    <th>Teacher</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in timetables %}
+                <tr class="{% if t.teacher_id == teacher.id %}highlight-row{% endif %}">
+                    <td>{{ t.day_of_week }}</td>
+                    <td>{{ t.start_time }} - {{ t.end_time }}</td>
+                    <td>{{ t.subject_name }}</td>
+                    <td>{{ t.teacher_name or '-' }}</td>
+                    <td>
+                        <button type="button" class="btn-small"
+                            onclick="editTimetable('{{ t.id }}', '{{ t.subject_id }}', '{{ t.teacher_id or '' }}', '{{ t.day_of_week }}', '{{ t.start_time }}', '{{ t.end_time }}')">
+                            Edit
+                        </button>
+                        <form method="post" action="{{ url_for('teacher.manage_timetable') }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="timetable_id" value="{{ t.id }}">
+                            <button type="submit" class="btn-small btn-secondary">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No timetable entries set.</p>
         {% endif %}
     </div>
 </div>
@@ -253,6 +453,12 @@
     .tab-content.active {
         display: block;
     }
+
+    .highlight-row {
+        background-color: #fff9c4 !important;
+        /* Soft yellow highlight */
+        font-weight: bold;
+    }
 </style>
 
 <script>
@@ -277,6 +483,32 @@
         }
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.className += " active";
+    }
+
+    function editTimetable(id, subjectId, teacherId, day, start, end) {
+        document.getElementById('tt_id').value = id;
+        document.getElementById('tt_action').value = 'update';
+        document.getElementById('tt_subject').value = subjectId;
+        document.getElementById('tt_teacher').value = teacherId;
+        document.getElementById('tt_day').value = day;
+
+        // Format TIME (HH:MM:SS) to HH:MM for input[type="time"]
+        document.getElementById('tt_start').value = start.substring(0, 5);
+        document.getElementById('tt_end').value = end.substring(0, 5);
+
+        document.getElementById('tt_submit_btn').innerText = 'Update Entry';
+        document.getElementById('tt_cancel_btn').style.display = 'inline-block';
+
+        // Scroll to form
+        document.getElementById('Timetable').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelTTExted() {
+        document.getElementById('timetable-form').reset();
+        document.getElementById('tt_id').value = '';
+        document.getElementById('tt_action').value = 'add';
+        document.getElementById('tt_submit_btn').innerText = 'Add Entry';
+        document.getElementById('tt_cancel_btn').style.display = 'none';
     }
 </script>
 

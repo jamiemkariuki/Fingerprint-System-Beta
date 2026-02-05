@@ -18,14 +18,16 @@
     <div class="card">
         <h3>Your Children</h3>
         {% for child in children %}
-        <div class="card"
-            style="margin-bottom: 20px; background: #f9f9f9; border-left: 4px solid {% if child.status == 'Present' %}green{% else %}orange{% endif %};">
+        <div class="card child-status-{{ 'checked-in' if child.status == 'Checked In' else ('checked-out' if child.status == 'Checked Out' else 'absent') }}"
+            style="margin-bottom: 20px; background: #f9f9f9;">
             <h4>{{ child.name }} ({{ child.class }})</h4>
             <p><strong>Relationship:</strong> {{ child.relationship }}</p>
             <p>
                 <strong>Today's Status:</strong>
-                {% if child.status == 'Present' %}
-                <span class="status-present">Present</span>
+                {% if child.status == 'Checked In' %}
+                <span class="status-present">Checked In</span>
+                {% elif child.status == 'Checked Out' %}
+                <span class="status-absent" style="background-color: orange;">Checked Out</span>
                 {% else %}
                 <span class="status-absent">Absent</span>
                 {% endif %}
@@ -56,8 +58,72 @@
             {% endif %}
 
             <div style="margin-top: 15px;">
+                <h5>Clearance Status</h5>
+                {% if child.audits %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for audit in child.audits %}
+                        <tr>
+                            <td>{{ audit.subject_name }}</td>
+                            <td>
+                                {% if audit.status == 'Cleared' %}
+                                <span style="color: green; font-weight: bold;">✓ Cleared</span>
+                                {% elif audit.status == 'Not Cleared' %}
+                                <span style="color: red; font-weight: bold;">✗ Not Cleared</span>
+                                {% elif audit.status == 'Pending' %}
+                                <span style="color: orange; font-weight: bold;">⚠ Pending</span>
+                                {% else %}
+                                <span style="color: grey;">Not Initialized</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ audit.notes or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #777;">No clearance records found.</p>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 15px;">
+                <h5>Class Timetable</h5>
+                {% if child.timetable %}
+                <table style="margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in child.timetable %}
+                        <tr>
+                            <td>{{ t.day_of_week }}</td>
+                            <td>{{ t.start_time }} - {{ t.end_time }}</td>
+                            <td>{{ t.subject_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #777;">No timetable set for this class.</p>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 15px;">
                 <a href="{{ url_for('teacher.student_attendance_pdf', student_id=child.id) }}" class="btn btn-small"
-                    target="_blank">Download Full Report (PDF)</a>
+                    target="_blank">Download Attendance Report (PDF)</a>
+                <a href="{{ url_for('parent.child_audit_pdf', student_id=child.id) }}" class="btn btn-small"
+                    target="_blank">Download Clearance PDF (Certificate)</a>
             </div>
         </div>
         {% endfor %}
@@ -71,70 +137,82 @@
 </div>
 
 <style>
-.admin-nav {
-    display: flex;
-    overflow-x: auto;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
-    background-color: var(--off-white);
-    padding: 0 10px;
-}
+    .admin-nav {
+        display: flex;
+        overflow-x: auto;
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--border-color);
+        background-color: var(--off-white);
+        padding: 0 10px;
+    }
 
-.tab-link {
-    background-color: #f8f9fa;
-    border: 1px solid var(--border-color);
-    padding: 12px 20px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    border-radius: 5px 5px 0 0;
-    margin-right: 5px;
-    color: var(--text-dark);
-    transition: background-color 0.3s, color 0.3s;
-}
+    .tab-link {
+        background-color: #f8f9fa;
+        border: 1px solid var(--border-color);
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        border-radius: 5px 5px 0 0;
+        margin-right: 5px;
+        color: var(--text-dark);
+        transition: background-color 0.3s, color 0.3s;
+    }
 
-.tab-link:hover {
-    background-color: #e9ecef;
-}
+    .tab-link:hover {
+        background-color: #e9ecef;
+    }
 
-.tab-link.active {
-    background-color: var(--brown-medium);
-    color: white;
-    border-bottom-color: var(--brown-medium);
-}
+    .tab-link.active {
+        background-color: var(--brown-medium);
+        color: white;
+        border-bottom-color: var(--brown-medium);
+    }
 
-.tab-content {
-    display: none;
-}
+    .tab-content {
+        display: none;
+    }
 
-.tab-content.active {
-    display: block;
-}
+    .tab-content.active {
+        display: block;
+    }
+
+    .child-status-checked-in {
+        border-left: 4px solid green;
+    }
+
+    .child-status-checked-out {
+        border-left: 4px solid orange;
+    }
+
+    .child-status-absent {
+        border-left: 4px solid red;
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var tabcontent = document.getElementsByClassName("tab-content");
-    for (var i = 0; i < tabcontent.length; i++) {
-        if (!tabcontent[i].classList.contains('active')) {
+    document.addEventListener('DOMContentLoaded', function () {
+        var tabcontent = document.getElementsByClassName("tab-content");
+        for (var i = 0; i < tabcontent.length; i++) {
+            if (!tabcontent[i].classList.contains('active')) {
+                tabcontent[i].style.display = "none";
+            }
+        }
+    });
+
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
             tabcontent[i].style.display = "none";
         }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
     }
-});
-
-function openTab(evt, tabName) {
-    var i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-    tablinks = document.getElementsByClassName("tab-link");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-    document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
-}
 </script>
 
 {% endblock %}

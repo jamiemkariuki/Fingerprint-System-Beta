@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS `FingerprintLogs` (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   person_type ENUM('student','teacher') NOT NULL,
   person_id INT UNSIGNED NOT NULL,
+  log_type ENUM('IN', 'OUT') NOT NULL DEFAULT 'IN',
   timestamp DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
   KEY idx_logs_person_day (person_type, person_id, timestamp)
@@ -102,6 +103,47 @@ CREATE TABLE IF NOT EXISTS `StudentAudit` (
   FOREIGN KEY (student_id) REFERENCES `Users`(id) ON DELETE CASCADE,
   FOREIGN KEY (subject_id) REFERENCES `Subjects`(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_student_subject (student_id, subject_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Timetable Table
+CREATE TABLE IF NOT EXISTS `Timetable` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  class VARCHAR(64) NOT NULL,
+  subject_id INT UNSIGNED NOT NULL,
+  teacher_id INT UNSIGNED,
+  day_of_week VARCHAR(20) NOT NULL, -- Monday, Tuesday, etc.
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FOREIGN KEY (subject_id) REFERENCES `Subjects`(id) ON DELETE CASCADE,
+  FOREIGN KEY (teacher_id) REFERENCES `Teachers`(id) ON DELETE SET NULL,
+  KEY idx_timetable_class (class)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Teacher Subject Assignments Table (Admin assigns subjects+classes to teachers)
+CREATE TABLE IF NOT EXISTS `TeacherSubjectAssignments` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  teacher_id INT UNSIGNED NOT NULL,
+  subject_id INT UNSIGNED NOT NULL,
+  class VARCHAR(64) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FOREIGN KEY (teacher_id) REFERENCES `Teachers`(id) ON DELETE CASCADE,
+  FOREIGN KEY (subject_id) REFERENCES `Subjects`(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_teacher_subject_class (teacher_id, subject_id, class)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Student Subject Enrollment Table
+CREATE TABLE IF NOT EXISTS `StudentSubjects` (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  student_id INT UNSIGNED NOT NULL,
+  subject_id INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  FOREIGN KEY (student_id) REFERENCES `Users`(id) ON DELETE CASCADE,
+  FOREIGN KEY (subject_id) REFERENCES `Subjects`(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_student_subject_enroll (student_id, subject_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Settings Table

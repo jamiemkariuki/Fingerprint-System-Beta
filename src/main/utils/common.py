@@ -49,12 +49,16 @@ def update_setting(key, value):
 
 def _get_student_attendance_status(cursor, student_id, today):
     cursor.execute("""
-        SELECT 1 FROM FingerprintLogs
+        SELECT log_type FROM FingerprintLogs
         WHERE person_type = 'student'
         AND person_id = %s
         AND DATE(timestamp) = %s
         AND TIME(timestamp) BETWEEN '05:00:00' AND '22:00:00'
+        ORDER BY timestamp DESC
         LIMIT 1
     """, (student_id, today))
     log = cursor.fetchone()
-    return "Present" if log else "Absent"
+    
+    if log:
+        return "Checked In" if log['log_type'] == 'IN' else "Checked Out"
+    return "Checked Out"

@@ -79,16 +79,34 @@ class FingerprintListener(threading.Thread):
             conn = None
             try:
                 conn = connect_db()
-                cursor = conn.cursor()
+                cursor = conn.cursor(dictionary=True)
+                
+                # Determine IN or OUT
+                # Check the very last log for this person
                 cursor.execute(
-                    "INSERT INTO FingerprintLogs (person_type, person_id) VALUES (%s, %s)",
+                    "SELECT log_type FROM FingerprintLogs WHERE person_type = %s AND person_id = %s ORDER BY id DESC LIMIT 1",
                     (person_type, person_id)
                 )
+                last_log = cursor.fetchone()
+                
+                new_type = 'IN'
+                if last_log and last_log['log_type'] == 'IN':
+                    new_type = 'OUT'
+                
+                # Insert
+                cursor.execute(
+                    "INSERT INTO FingerprintLogs (person_type, person_id, log_type) VALUES (%s, %s, %s)",
+                    (person_type, person_id, new_type)
+                )
                 conn.commit()
-                logger.info(f"[LOG] {person_type} ID {person_id} logged successfully")
+                
+                action = "Checked IN" if new_type == 'IN' else "Checked OUT"
+                logger.info(f"[LOG] {person_type} ID {person_id} - {action}")
+                
                 self.scan_queue.put({
                     "person_type": person_type,
                     "person_id": person_id,
+                    "type": new_type,
                     "timestamp": datetime.now().isoformat()
                 })
             except Exception as e:

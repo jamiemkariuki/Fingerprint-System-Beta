@@ -56,6 +56,28 @@ def parent_dashboard():
             """, (child["id"], seven_days_ago))
             child["recent_attendance"] = cursor.fetchall()
 
+            # Get all enrolled subjects and clearance status
+            cursor.execute("""
+                SELECT s.name as subject_name, sa.status, sa.notes
+                FROM StudentSubjects ss
+                JOIN Subjects s ON ss.subject_id = s.id
+                LEFT JOIN StudentAudit sa ON (ss.student_id = sa.student_id AND ss.subject_id = sa.subject_id)
+                WHERE ss.student_id = %s
+                ORDER BY s.name
+            """, (child["id"],))
+            child["audits"] = cursor.fetchall()
+
+            # Get timetable for child's class
+            cursor.execute("""
+                SELECT t.day_of_week, s.name as subject_name, t.start_time, t.end_time, te.name as teacher_name
+                FROM Timetable t
+                JOIN Subjects s ON t.subject_id = s.id
+                LEFT JOIN Teachers te ON t.teacher_id = te.id
+                WHERE t.class = %s
+                ORDER BY FIELD(t.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'), t.start_time
+            """, (child["class"],))
+            child["timetable"] = cursor.fetchall()
+
         return render_template("parent_dashboard.html", parent_info=parent_info, children=children)
 
     except mysql.connector.Error as e:
@@ -70,3 +92,50 @@ def parent_dashboard():
 def parent_logout():
     session.pop("parent_id", None)
     return redirect(url_for("main.home"))
+@parent_bp.route('/child_audit_pdf/<int:student_id>')
+def child_audit_pdf(student_id):
+    if "parent_id" not in session:
+        return redirect(url_for("parent.parent_login"))
+
+    parent_id = session["parent_id"]
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Verify relationship
+        cursor.execute("""
+            SELECT u.* FROM Users u
+            JOIN StudentParents sp ON u.id = sp.student_id
+            WHERE sp.parent_id = %s AND sp.student_id = %s
+        """, (parent_id, student_id))
+        student = cursor.fetchone()
+
+        if not student:
+            flash("You are not authorized to view this child's record.", "error")
+            return redirect(url_for("parent.parent_dashboard"))
+
+        cursor.execute("""
+            SELECT s.name as subject_name, sa.status, sa.notes
+            FROM StudentAudit sa
+            JOIN Subjects s ON sa.subject_id = s.id
+            WHERE sa.student_id = %s
+            ORDER BY s.name
+        """, (student_id,))
+        audit_records = cursor.fetchall()
+
+        from ..utils.pdf import generate_audit_report_pdf
+        pdf_data = generate_audit_report_pdf(student, audit_records)
+
+        from flask import Response
+        response = Response(pdf_data, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'attachment; filename=child_clearance_{student_id}.pdf'
+        return response
+
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error generating child audit PDF: %s", e)
+        flash(f"Database error: {e}", "error")
+        return redirect(url_for("parent.parent_dashboard"))
+    finally:
+        if conn:
+            conn.close()

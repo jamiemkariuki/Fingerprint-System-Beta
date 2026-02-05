@@ -69,7 +69,7 @@ $env:PYTHONPATH="."
 python wsgi.py
 ```
 
-- **Access the Web App**: Open [http://localhost:5000](http://localhost:5000)
+- **Access the Web App**: Open [http://localhost](http://localhost)
 - **Default Admin Credentials**:
     - **Username**: `admin`
     - **Password**: `admin123`

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -84,11 +85,37 @@ def generate_attendance_pdf(student, attendance_logs):
             table_data = [["Date", "Scans", "First Scan", "Last Scan"]]
             
             for log in attendance_logs:
+                # Handle First Scan
+                first_scan_str = ""
+                if isinstance(log["first_scan"], timedelta):
+                    total_seconds = int(log["first_scan"].total_seconds())
+                    hours = total_seconds // 3600
+                    minutes = (total_seconds % 3600) // 60
+                    seconds = total_seconds % 60
+                    first_scan_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+                elif hasattr(log["first_scan"], 'strftime'):
+                    first_scan_str = log["first_scan"].strftime("%H:%M:%S")
+                else:
+                    first_scan_str = str(log["first_scan"])
+
+                # Handle Last Scan
+                last_scan_str = ""
+                if isinstance(log["last_scan"], timedelta):
+                    total_seconds = int(log["last_scan"].total_seconds())
+                    hours = total_seconds // 3600
+                    minutes = (total_seconds % 3600) // 60
+                    seconds = total_seconds % 60
+                    last_scan_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+                elif hasattr(log["last_scan"], 'strftime'):
+                    last_scan_str = log["last_scan"].strftime("%H:%M:%S")
+                else:
+                    last_scan_str = str(log["last_scan"])
+
                 table_data.append([
                     log["date"].strftime("%Y-%m-%d"),
                     str(log["scan_count"]),
-                    log["first_scan"].strftime("%H:%M:%S"),
-                    log["last_scan"].strftime("%H:%M:%S")
+                    first_scan_str,
+                    last_scan_str
                 ])
             
             attendance_table = Table(table_data, colWidths=[1.2*inch, 0.8*inch, 1.2*inch, 1.2*inch])
@@ -137,4 +164,68 @@ def generate_class_attendance_pdf(class_name, students, date):
         return buffer.getvalue()
     except Exception as e:
         logger.exception("Error generating class attendance PDF: %s", e)
+        raise
+def generate_audit_report_pdf(student, audit_records):
+    """Generate PDF content for student clearance/audit report"""
+    try:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles, title_style, heading_style = _get_common_styles()
+        
+        story = []
+        
+        # Title
+        story.append(Paragraph("Student Clearance Certificate", title_style))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        # Student Info
+        story.append(Paragraph("Student Information", heading_style))
+        student_info = [
+            ["Name:", student["name"]],
+            ["Class:", student["class"]],
+            ["Student ID:", str(student["id"])]
+        ]
+        
+        student_table = Table(student_info, colWidths=[1.5*inch, 4*inch])
+        student_table.setStyle(_get_table_style(2, 2))
+        story.append(student_table)
+        story.append(Spacer(1, 30))
+        
+        # Audit Records
+        story.append(Paragraph("Clearance Summary", heading_style))
+        
+        if audit_records:
+            table_data = [["Subject", "Status", "Remarks / Notes"]]
+            
+            for record in audit_records:
+                status_text = record["status"]
+                remarks = record["notes"] if record["notes"] else "-"
+                
+                table_data.append([
+                    record["subject_name"],
+                    status_text,
+                    Paragraph(remarks, styles['Normal']) # Use Paragraph for wrapping notes
+                ])
+            
+            audit_table = Table(table_data, colWidths=[1.5*inch, 1*inch, 3*inch])
+            
+            # Custom style for audit table to handle status colors potentially? (Simplified for now)
+            audit_table.setStyle(_get_table_style(3, 3))
+            story.append(audit_table)
+        else:
+            story.append(Paragraph("No clearance records found for this student.", styles['Normal']))
+        
+        story.append(Spacer(1, 40))
+        story.append(Paragraph("Official School Stamp & Signature:", styles['Normal']))
+        story.append(Spacer(1, 50))
+        story.append(Paragraph("________________________________________", styles['Normal']))
+        story.append(Paragraph("Head of Department / Bursar", styles['Normal']))
+
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
+    except Exception as e:
+        logger.exception("Error generating audit report PDF: %s", e)
         raise

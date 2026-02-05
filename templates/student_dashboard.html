@@ -4,6 +4,7 @@
 <div class="admin-nav">
     <button class="tab-link active" onclick="openTab(event, 'Overview')">Overview</button>
     <button class="tab-link" onclick="openTab(event, 'Auditing')">Auditing</button>
+    <button class="tab-link" onclick="openTab(event, 'Timetable')">Timetable</button>
 </div>
 
 <div id="Overview" class="tab-content active">
@@ -50,7 +51,11 @@
 
 <div id="Auditing" class="tab-content">
     <div class="card">
-        <h3>Subject Clearance (Auditing)</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3>Subject Clearance (Auditing)</h3>
+            <a href="{{ url_for('student.my_audit_pdf') }}" class="btn" target="_blank">Download Clearance PDF
+                (Certificate)</a>
+        </div>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -71,17 +76,22 @@
                             <span style="color: green;">✓ Cleared</span>
                             {% elif record.status == 'Not Cleared' %}
                             <span style="color: red;">✗ Not Cleared</span>
-                            {% else %}
+                            {% elif record.status == 'Pending' %}
                             <span style="color: orange;">⚠ Pending</span>
+                            {% else %}
+                            <span style="color: grey;">Not Initialized</span>
                             {% endif %}
                         </td>
                         <td>
                             {{ record.notes or '-' }}
-                            <form method="post" action="{{ url_for('student.audit_note', audit_id=record.id) }}" style="margin-top:4px;">
+                            {% if record.audit_id %}
+                            <form method="post" action="{{ url_for('student.audit_note', audit_id=record.audit_id) }}"
+                                style="margin-top:4px;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                 <input type="text" name="note" placeholder="Add note" style="width: 140px;">
                                 <button type="submit" class="btn btn-small" style="margin-left:6px;">Add</button>
                             </form>
+                            {% endif %}
                         </td>
                         <td>{{ record.updated_at.strftime('%Y-%m-%d %H:%M') if record.updated_at else '-' }}</td>
                     </tr>
@@ -97,71 +107,112 @@
     </div>
 </div>
 
+<div id="Timetable" class="tab-content">
+    <div class="card">
+        <h3>Class Timetable</h3>
+        <p class="small text-muted">Highlighted rows indicate subjects you are currently enrolled in.</p>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Subject</th>
+                        <th>Teacher</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if timetable %}
+                    {% for t in timetable %}
+                    <tr class="{% if t.subject_id in enrolled_subject_ids %}highlight-row{% endif %}">
+                        <td>{{ t.day_of_week }}</td>
+                        <td>{{ t.start_time }} - {{ t.end_time }}</td>
+                        <td>{{ t.subject_name }}</td>
+                        <td>{{ t.teacher_name or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center;">No timetable entries found for your class.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <style>
-.admin-nav {
-    display: flex;
-    overflow-x: auto;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
-    background-color: var(--off-white);
-    padding: 0 10px;
-}
+    .admin-nav {
+        display: flex;
+        overflow-x: auto;
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--border-color);
+        background-color: var(--off-white);
+        padding: 0 10px;
+    }
 
-.tab-link {
-    background-color: #f8f9fa;
-    border: 1px solid var(--border-color);
-    padding: 12px 20px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    border-radius: 5px 5px 0 0;
-    margin-right: 5px;
-    color: var(--text-dark);
-    transition: background-color 0.3s, color 0.3s;
-}
+    .tab-link {
+        background-color: #f8f9fa;
+        border: 1px solid var(--border-color);
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        border-radius: 5px 5px 0 0;
+        margin-right: 5px;
+        color: var(--text-dark);
+        transition: background-color 0.3s, color 0.3s;
+    }
 
-.tab-link:hover {
-    background-color: #e9ecef;
-}
+    .tab-link:hover {
+        background-color: #e9ecef;
+    }
 
-.tab-link.active {
-    background-color: var(--brown-medium);
-    color: white;
-    border-bottom-color: var(--brown-medium);
-}
+    .tab-link.active {
+        background-color: var(--brown-medium);
+        color: white;
+        border-bottom-color: var(--brown-medium);
+    }
 
-.tab-content {
-    display: none;
-}
+    .tab-content {
+        display: none;
+    }
 
-.tab-content.active {
-    display: block;
-}
+    .tab-content.active {
+        display: block;
+    }
+
+    .highlight-row {
+        background-color: #fff9c4 !important;
+        /* Soft yellow highlight */
+        font-weight: bold;
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var tabcontent = document.getElementsByClassName("tab-content");
-    for (var i = 0; i < tabcontent.length; i++) {
-        if (!tabcontent[i].classList.contains('active')) {
+    document.addEventListener('DOMContentLoaded', function () {
+        var tabcontent = document.getElementsByClassName("tab-content");
+        for (var i = 0; i < tabcontent.length; i++) {
+            if (!tabcontent[i].classList.contains('active')) {
+                tabcontent[i].style.display = "none";
+            }
+        }
+    });
+
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
             tabcontent[i].style.display = "none";
         }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
     }
-});
-
-function openTab(evt, tabName) {
-    var i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-    tablinks = document.getElementsByClassName("tab-link");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-    document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
-}
 </script>
 
 {% endblock %}
