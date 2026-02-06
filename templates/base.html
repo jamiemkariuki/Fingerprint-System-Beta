@@ -1,50 +1,57 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Fingerprint System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  </head>
-  <body>
-    <header class="header">
-      <nav class="nav">
-        <a href="{{ url_for('main.home') }}" class="brand">Fingerprint System</a>
-        <ul class="nav-links">
-          {% if session.get('admin_id') %}
-            <li><a href="{{ url_for('admin.admin_dashboard') }}">Admin Dashboard</a></li>
-            <li><a href="{{ url_for('admin.admin_logout') }}">Logout</a></li>
-          {% elif session.get('teacher_id') %}
-            <li><a href="{{ url_for('teacher.teacher_dashboard') }}">Teacher Dashboard</a></li>
-            <li><a href="{{ url_for('teacher.teacher_logout') }}">Logout</a></li>
-          {% elif session.get('student_id') %}
-            <li><a href="{{ url_for('student.student_dashboard') }}">Student Dashboard</a></li>
-            <li><a href="{{ url_for('student.student_logout') }}">Logout</a></li>
-          {% elif session.get('parent_id') %}
-            <li><a href="{{ url_for('parent.parent_dashboard') }}">Parent Dashboard</a></li>
-            <li><a href="{{ url_for('parent.parent_logout') }}">Logout</a></li>
-          {% else %}
-            <li><a href="{{ url_for('main.home') }}">Home</a></li>
-            <li><a href="{{ url_for('main.login') }}">Login</a></li>
-          {% endif %}
-        </ul>
-      </nav>
-    </header>
 
-    <main class="main">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-          {% endfor %}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>St Nicholas Senior School</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+  <header class="header">
+    <nav class="nav">
+      <a href="{{ url_for('main.home') }}" class="brand">
+        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo"
+          style="height: 40px; vertical-align: middle; margin-right: 10px;">
+        St Nicholas Senior School
+      </a>
+      <ul class="nav-links">
+        {% if session.get('admin_id') %}
+        <li><a href="{{ url_for('admin.admin_dashboard') }}">Admin Dashboard</a></li>
+        <li><a href="{{ url_for('admin.admin_logout') }}">Logout</a></li>
+        {% elif session.get('teacher_id') %}
+        <li><a href="{{ url_for('teacher.teacher_dashboard') }}">Teacher Dashboard</a></li>
+        <li><a href="{{ url_for('teacher.teacher_logout') }}">Logout</a></li>
+        {% elif session.get('student_id') %}
+        <li><a href="{{ url_for('student.student_dashboard') }}">Student Dashboard</a></li>
+        <li><a href="{{ url_for('student.student_logout') }}">Logout</a></li>
+        {% elif session.get('parent_id') %}
+        <li><a href="{{ url_for('parent.parent_dashboard') }}">Parent Dashboard</a></li>
+        <li><a href="{{ url_for('parent.parent_logout') }}">Logout</a></li>
+        {% else %}
+        <li><a href="{{ url_for('main.home') }}">Home</a></li>
+        <li><a href="{{ url_for('main.login') }}">Login</a></li>
         {% endif %}
-      {% endwith %}
+      </ul>
+    </nav>
+  </header>
 
-      {% block content %}{% endblock %}
-    </main>
+  <main class="main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
 
-    <footer class="footer">
-      <p>&copy; 2026 Fingerprint System</p>
-    </footer>
-  </body>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 St Nicholas Senior School</p>
+  </footer>
+</body>
+
 </html>

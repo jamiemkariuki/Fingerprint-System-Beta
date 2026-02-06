@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import mysql.connector
 import os
 from dotenv import load_dotenv
@@ -36,7 +40,8 @@ def init_db():
         
         # Read and apply schema
         print("Applying schema.sql...")
-        with open('schema.sql', 'r') as f:
+        schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'schema.sql')
+        with open(schema_path, 'r') as f:
             schema_sql = f.read()
             
         # Split by statements

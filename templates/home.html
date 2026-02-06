@@ -1,21 +1,36 @@
 {% extends 'base.html' %}
+
 {% block content %}
 <div class="card text-center">
-    <h1>School Fingerprint Attendance</h1>
-    <p>A simple system to register students and record attendance using a fingerprint sensor. Teachers can review daily
-        presence by class, while admins manage teachers and students.</p>
+    <h1>St Nicholas Senior School</h1>
+    <p>Welcome to the official digital management portal. Streamlining attendance, academic performance, and
+        communication.</p>
+
     <div class="mt-20">
-        <a href="{{ url_for('main.login') }}" class="btn">Login</a>
+        {% if not session.get('admin_id') and not session.get('teacher_id') and not session.get('student_id') and not
+        session.get('parent_id') %}
+        <a href="{{ url_for('main.login') }}" class="btn">Login to Portal</a>
+        {% else %}
+        {% if session.get('admin_id') %}
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-secondary">Go to Admin Dashboard</a>
+        {% elif session.get('teacher_id') %}
+        <a href="{{ url_for('teacher.teacher_dashboard') }}" class="btn btn-secondary">Go to Teacher Dashboard</a>
+        {% elif session.get('student_id') %}
+        <a href="{{ url_for('student.student_dashboard') }}" class="btn btn-secondary">Go to Student Dashboard</a>
+        {% elif session.get('parent_id') %}
+        <a href="{{ url_for('parent.parent_dashboard') }}" class="btn btn-secondary">Go to Parent Dashboard</a>
+        {% endif %}
+        {% endif %}
     </div>
 </div>
 
 <div class="card">
-    <h2>Features</h2>
+    <h2>System Modules</h2>
     <ul>
-        <li>Enroll student fingerprints from the web app</li>
-        <li>Background listener matches scans to users</li>
-        <li>Daily presence view with class filtering</li>
-        <li>Secure logins for teachers and admins</li>
+        <li><strong>Student Attendance:</strong> Secure biometric tracking of daily presence.</li>
+        <li><strong>Exam Results:</strong> View term performance, grades, and download report cards.</li>
+        <li><strong>Teacher Portal:</strong> Manage subjects, classes, and student records.</li>
+        <li><strong>Parent Access:</strong> Real-time updates on your child's academic progress.</li>
     </ul>
 </div>
 {% endblock %}

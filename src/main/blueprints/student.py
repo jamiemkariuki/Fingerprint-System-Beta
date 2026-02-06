@@ -76,7 +76,8 @@ def student_dashboard():
             FROM ExamResults er
             JOIN Subjects s ON er.subject_id = s.id
             LEFT JOIN Teachers te ON er.teacher_id = te.id
-            WHERE er.student_id = %s
+            JOIN PublishedExams pe ON (er.term = pe.term AND er.exam_type = pe.exam_type)
+            WHERE er.student_id = %s AND pe.is_published = 1
             ORDER BY er.term DESC, er.exam_type ASC
         """, (student_id,))
         exam_results = cursor.fetchall()

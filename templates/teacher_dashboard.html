@@ -448,7 +448,12 @@
             <div class="grid" style="margin-top: 15px;">
                 <div style="flex: 1;">
                     <label for="er_type">Exam Type</label>
-                    <input type="text" id="er_type" name="exam_type" placeholder="e.g. Midterm, Final" required>
+                    <select id="er_type" name="exam_type" required>
+                        <option value="">-- Select Exam Type --</option>
+                        {% for et in exam_types %}
+                        <option value="{{ et.name }}">{{ et.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div style="flex: 1;">
                     <label for="er_term">Term</label>

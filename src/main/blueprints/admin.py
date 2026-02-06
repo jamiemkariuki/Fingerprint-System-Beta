@@ -57,6 +57,19 @@ def admin_dashboard():
         cursor.execute("SELECT * FROM Subjects ORDER BY name")
         subjects = cursor.fetchall()
 
+        cursor.execute("SELECT * FROM ExamTypes ORDER BY created_at DESC")
+        exam_types = cursor.fetchall()
+
+        # Fetch unique Exam Sets (Term + Type) and their publish status
+        cursor.execute("""
+            SELECT DISTINCT er.term, er.exam_type, 
+                   COALESCE(pe.is_published, 0) as is_published
+            FROM ExamResults er
+            LEFT JOIN PublishedExams pe ON er.term = pe.term AND er.exam_type = pe.exam_type
+            ORDER BY er.term DESC, er.exam_type ASC
+        """)
+        exam_publishing_list = cursor.fetchall()
+
         cursor.execute("""
             SELECT ss.id, u.name as student_name, s.name as subject_name, u.id as student_id, s.id as subject_id
             FROM StudentSubjects ss
@@ -138,7 +151,9 @@ def admin_dashboard():
             subject_count=subject_count,
             audit_count=audit_count,
             pending_count=pending_count,
-            total_audit=total_audit
+            total_audit=total_audit,
+            exam_types=exam_types,
+            exam_publishing_list=exam_publishing_list
         )
 
     except mysql.connector.Error as e:
@@ -826,3 +841,87 @@ def manage_exam_results():
             conn.close()
 
     return redirect(request.referrer or url_for("admin.admin_dashboard"))
+
+@admin_bp.route('/manage_exam_types', methods=['POST'])
+def manage_exam_types():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    action = request.form.get("action")
+    logger.info(f"manage_exam_types called with action: {action}")
+    
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        if action == "add":
+            name = request.form.get("name")
+            if not name:
+                flash("Exam type name is required", "error")
+            else:
+                try:
+                    cursor.execute("INSERT INTO ExamTypes (name) VALUES (%s)", (name,))
+                    conn.commit()
+                    flash(f"Exam type '{name}' added successfully", "success")
+                except mysql.connector.Error as err:
+                    if err.errno == 1062: # Duplicate entry
+                         flash(f"Exam type '{name}' already exists", "error")
+                    else:
+                        flash(f"Error adding exam type: {err}", "error")
+
+        elif action == "toggle":
+            type_id = request.form.get("type_id")
+            current_status = request.form.get("current_status")
+            new_status = 0 if current_status == '1' else 1
+            
+            cursor.execute("UPDATE ExamTypes SET is_active = %s WHERE id = %s", (new_status, type_id))
+            conn.commit()
+            flash("Exam type status updated", "success")
+
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error managing exam types: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for('admin.admin_dashboard'))
+
+@admin_bp.route('/manage_publishing', methods=['POST'])
+def manage_publishing():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.admin_login"))
+
+    term = request.form.get("term")
+    exam_type = request.form.get("exam_type")
+    logger.info(f"manage_publishing called for term: {term}, type: {exam_type}")
+    
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Check if record exists
+        cursor.execute("SELECT id, is_published FROM PublishedExams WHERE term = %s AND exam_type = %s", (term, exam_type))
+        record = cursor.fetchone()
+
+        if record:
+            # Toggle
+            new_status = 0 if record[1] == 1 else 1
+            cursor.execute("UPDATE PublishedExams SET is_published = %s WHERE id = %s", (new_status, record[0]))
+        else:
+            # Create as Published (since the user clicked "Publish")
+            cursor.execute("INSERT INTO PublishedExams (term, exam_type, is_published) VALUES (%s, %s, 1)", (term, exam_type))
+        
+        conn.commit()
+        flash(f"Updated status for {term} - {exam_type}", "success")
+
+    except mysql.connector.Error as e:
+        logger.exception("MySQL Error managing publishing: %s", e)
+        flash(f"Database error: {e}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for('admin.admin_dashboard'))

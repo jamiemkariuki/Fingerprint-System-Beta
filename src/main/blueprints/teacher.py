@@ -54,6 +54,10 @@ def teacher_dashboard():
         # Get ALL subjects (for the "Assign Subject to Student" form)
         cursor.execute("SELECT * FROM Subjects ORDER BY name")
         all_subjects = cursor.fetchall()
+        
+        # Get Active Exam Types
+        cursor.execute("SELECT * FROM ExamTypes WHERE is_active = 1 ORDER BY created_at DESC")
+        exam_types = cursor.fetchall()
 
         # Build query for audits this teacher can manage
         # 1. Global Subjects: Any student taking a subject this teacher is assigned to teach.
@@ -129,7 +133,8 @@ def teacher_dashboard():
                                enrollment_links=enrollment_links,
                                timetables=timetables,
                                teachers=teachers_list,
-                               exam_results=exam_results)
+                               exam_results=exam_results,
+                               exam_types=exam_types)
 
     except mysql.connector.Error as e:
         logger.exception("MySQL Error on teacher dashboard: %s", e)

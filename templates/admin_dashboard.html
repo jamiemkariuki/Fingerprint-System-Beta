@@ -14,6 +14,8 @@
     <button class="tab-link" onclick="openTab(event, 'Reports')">Reports</button>
     <button class="tab-link" onclick="openTab(event, 'Timetable')">Timetable</button>
     <button class="tab-link" onclick="openTab(event, 'ExamResults')">Exam Results</button>
+    <button class="tab-link" onclick="openTab(event, 'ExamTypes')">Exam Types</button>
+    <button class="tab-link" onclick="openTab(event, 'PublishResults')">Publish Results</button>
 </div>
 
 <div id="Overview" class="tab-content active">
@@ -509,7 +511,6 @@
             <button type="button" id="tt_cancel_btn" style="display: none; background-color: grey;"
                 onclick="cancelTTExted()">Cancel Edit</button>
         </form>
-        </form>
 
         <h4>Existing Timetables</h4>
         {% if timetables %}
@@ -809,5 +810,119 @@
         document.getElementById('er_cancel_btn').style.display = 'none';
     }
 </script>
+
+<!-- Exam Types Tab -->
+<div id="ExamTypes" class="tab-content">
+    <div class="card">
+        <h3>Manage Exam Types</h3>
+        <p class="small text-muted">Add new exam types or disable old ones.</p>
+
+        <form method="post" action="{{ url_for('admin.manage_exam_types') }}"
+            style="margin-bottom: 30px; display: flex; gap: 10px; align-items: flex-end;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="add">
+
+            <div style="flex: 1;">
+                <label for="new_exam_type">New Exam Type Name</label>
+                <input id="new_exam_type" name="name" placeholder="e.g. Mock, Mid Term" required
+                    style="margin-top: 5px;">
+            </div>
+            <button type="submit" class="btn">Add Type</button>
+        </form>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for et in exam_types %}
+                <tr>
+                    <td>{{ et.name }}</td>
+                    <td>
+                        {% if et.is_active %}
+                        <span class="status-present">Active</span>
+                        {% else %}
+                        <span class="status-absent">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.manage_exam_types') }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="toggle">
+                            <input type="hidden" name="type_id" value="{{ et.id }}">
+                            <input type="hidden" name="current_status" value="{{ et.is_active }}">
+                            {% if et.is_active %}
+                            <button type="submit" class="btn btn-small"
+                                style="background-color: var(--error-color);">Disable</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-small"
+                                style="background-color: var(--success-color);">Enable</button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Publish Results Tab -->
+<div id="PublishResults" class="tab-content">
+    <div class="card">
+        <h3>Publish Exam Results</h3>
+        <p class="small text-muted">Control which exam results are visible to students and parents.</p>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Exam Type</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in exam_publishing_list %}
+                <tr>
+                    <td>{{ item.term }}</td>
+                    <td>{{ item.exam_type }}</td>
+                    <td>
+                        {% if item.is_published %}
+                        <span class="status-present">Published</span>
+                        {% else %}
+                        <span class="status-absent">Hidden</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.manage_publishing') }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="term" value="{{ item.term }}">
+                            <input type="hidden" name="exam_type" value="{{ item.exam_type }}">
+
+                            {% if item.is_published %}
+                            <button type="submit" class="btn btn-small"
+                                style="background-color: var(--error-color);">Unpublish</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-small"
+                                style="background-color: var(--success-color);">Publish</button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center;">No exam results found to publish.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 {% endblock %}

@@ -39,8 +39,25 @@ def create_app(config_class=Config):
     app.register_blueprint(student_bp, url_prefix='/student')
 
     # Configure logging
-    logging.basicConfig(level=getattr(logging, app.config["LOG_LEVEL"], logging.INFO),
-                        format="%(asctime)s %(levelname)s %(name)s - %(message)s")
+    log_level = getattr(logging, app.config["LOG_LEVEL"], logging.INFO)
+    
+    # Create logs directory if it doesn't exist
+    if not app.debug:
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        from logging.handlers import RotatingFileHandler
+        file_handler = RotatingFileHandler('logs/fingerprint.log', maxBytes=102400, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        
+        # Add to root logger to capture all
+        logging.getLogger().addHandler(file_handler)
+        
+    logging.basicConfig(level=log_level,
+                        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+                        force=True)
 
     # Start the fingerprint listener
     from .hardware.fingerprint_listener import FingerprintListener
